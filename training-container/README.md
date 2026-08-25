@@ -63,14 +63,23 @@ TRAINING_COMMAND="echo 'step 200/200 loss=0.13'" \
 
 ## 빌드와 배포
 
-이미지 이름은 백엔드 프로필 상수(`mvp/config.py`의 `image_name`)와 같아야 한다. 현재 값은 `unwork/sd15-lora:1`이다.
+이미지가 10GB를 넘어 노트북에서 빌드·푸시하면 디스크와 업로드가 모두 문제가 된다. GitHub Actions에서 빌드해 GHCR로 바로 올린다.
 
-```bash
-docker build -t <레지스트리>/unwork-sd15-lora:1 .
-docker push <레지스트리>/unwork-sd15-lora:1
+`training-container/` 아래를 고쳐서 `backend` 브랜치에 푸시하면 [.github/workflows/training-image.yml](../.github/workflows/training-image.yml)이 돈다. Actions 탭에서 수동 실행도 된다.
+
+빌드가 끝나면 이미지 주소가 작업 요약에 표시된다.
+
+```text
+ghcr.io/gjooo/unwork-sd15-lora:latest
 ```
 
-빌드는 CUDA 베이스 이미지와 SD 1.5 가중치를 포함해 수 GB가 된다. 푸시한 뒤 백엔드의 `image_name`을 실제 태그로 바꾼다. 비공개 레지스트리를 쓰면 Runpod에 registry 자격증명을 등록해야 한다.
+**푸시된 패키지는 기본이 비공개다.** Runpod이 자격증명 없이 받아가려면 GitHub → Packages → 해당 패키지 → Package settings → Change visibility에서 공개로 바꾼다. 비공개로 두려면 Runpod에 registry 자격증명을 따로 등록해야 한다.
+
+이미지 주소가 정해지면 백엔드는 코드 수정 없이 환경변수로 지정한다. `mvp/config.py`의 `image_name`은 기본값으로 남겨둔다.
+
+```bash
+export MVP_TRAINING_IMAGE=ghcr.io/gjooo/unwork-sd15-lora:latest
+```
 
 ## 백엔드와의 계약
 
