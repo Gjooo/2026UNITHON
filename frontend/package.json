@@ -10,7 +10,11 @@
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run --config vitest.unit.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "test:watch": "vitest --config vitest.unit.config.ts"
+    "test:watch": "vitest --config vitest.unit.config.ts",
+    "test:e2e:fake": "playwright test",
+    "test:e2e:backend": "playwright test --config playwright.backend.config.ts",
+    "test:visual": "playwright test --config playwright.visual.config.ts",
+    "smoke:runpod": "node scripts/smoke-runpod.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
@@ -22,6 +26,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",

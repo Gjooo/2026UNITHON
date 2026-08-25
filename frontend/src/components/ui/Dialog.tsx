@@ -20,7 +20,15 @@ export function Dialog({ title, onClose, children, actions }: DialogProps) {
     const trigger = document.activeElement as HTMLElement | null
     const focusables = dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE)
     focusables?.[0]?.focus()
-    return () => trigger?.focus()
+
+    // modal이 열린 동안 배경이 스크롤되면 안 된다.
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+      trigger?.focus()
+    }
   }, [])
 
   useEffect(() => {

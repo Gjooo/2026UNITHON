@@ -44,7 +44,7 @@ export function ApprovalPanel({
           실행 승인
         </button>
         <button className={styles.secondary} type="button" onClick={onEditConstraints}>
-          제약 수정
+          입력 수정
         </button>
       </div>
 

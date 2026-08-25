@@ -179,4 +179,58 @@
   .facts {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  /* 좁은 화면에서 표는 후보 카드로 접는다. 가로 스크롤에 의존하지 않는다. */
+  .table thead {
+    display: none;
+  }
+
+  .table,
+  .table tbody,
+  .table tr,
+  .table th,
+  .table td {
+    display: block;
+  }
+
+  .table tr {
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-md);
+    padding: var(--space-lg);
+  }
+
+  .table th[scope='row'] {
+    border-bottom: 1px solid var(--hairline-cool);
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: var(--space-md);
+    padding: 0 0 var(--space-md);
+  }
+
+  .table td {
+    border-bottom: 0;
+    display: flex;
+    gap: var(--space-lg);
+    justify-content: space-between;
+    padding: var(--space-xs) 0;
+    text-align: left;
+  }
+
+  .table td::before {
+    color: var(--ink-mute);
+    content: attr(data-label);
+    font-size: 13px;
+  }
+}
+
+/* author 스타일의 display가 UA의 [hidden] { display: none }을 이긴다. 명시적으로 되돌린다. */
+
+
+/* author 스타일의 display가 UA의 [hidden] { display: none }을 이긴다. 명시적으로 되돌린다. */
+
+
+/* author 스타일의 display가 UA의 [hidden] { display: none }을 이긴다. 명시적으로 되돌린다. */
+.disclosureBody[hidden] {
+  display: none;
 }

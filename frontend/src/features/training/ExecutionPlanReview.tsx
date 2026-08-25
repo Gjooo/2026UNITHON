@@ -60,16 +60,19 @@ export function ExecutionPlanReview({ job }: { job: TrainingJob }) {
                 return (
                   <tr key={candidate.profileId}>
                     <th scope="row">{candidate.gpuType}</th>
-                    <td className={styles.numeric}>
+                    <td className={styles.numeric} data-label="예상 시간">
                       {formatMinutes(candidate.estimatedRuntimeMinutes)}
                     </td>
-                    <td className={styles.numeric}>
+                    <td className={styles.numeric} data-label="예상 GPU 비용">
                       {formatKrw(candidate.estimatedGpuCostKrw)}
                     </td>
-                    <td className={eligible ? styles.statusOk : styles.statusWarn}>
+                    <td
+                      className={eligible ? styles.statusOk : styles.statusWarn}
+                      data-label="예산 적합 여부"
+                    >
                       {ELIGIBILITY_LABEL[candidate.eligibility]}
                     </td>
-                    <td>
+                    <td data-label="추천 여부">
                       {candidate.profileId === recommended.profileId ? '추천' : '선택 안 함'}
                     </td>
                   </tr>

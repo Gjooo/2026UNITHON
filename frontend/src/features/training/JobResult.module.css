@@ -125,3 +125,7 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.detail[hidden] {
+  display: none;
+}

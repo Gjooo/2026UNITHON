@@ -91,7 +91,7 @@ export function JobTracker({ job, isCancelling, onCancel }: JobTrackerProps) {
       <dl className={styles.figures}>
         <div>
           <dt>경과 시간</dt>
-          <dd>{formatElapsed(job.startedAt, now)}</dd>
+          <dd data-testid="elapsed">{formatElapsed(job.startedAt, now)}</dd>
           <p className={styles.cap}>최대 {job.scenario.maxRuntimeMinutes}분</p>
         </div>
       </dl>
