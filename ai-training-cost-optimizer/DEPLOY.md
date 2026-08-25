@@ -163,17 +163,44 @@ GPU를 만들지 않고 설정과 GPU 프로필 유효성만 검사한다. 통�
 fly ssh console -C "python -m training_cost_optimizer.mvp.smoke --confirm RUNPOD --profile runpod-rtx4090-v1"
 ```
 
-## Railway를 쓸 경우 (대안)
+## Railway (프런트엔드 연동용)
 
-Fly보다 단계가 적다. 다음만 지키면 된다.
+프런트엔드가 항상 붙어 있을 수 있는 주소가 필요해 Railway에 올린다. **실제 GPU를 쓰는 실행은 여기서 하지 않는다.** `MVP_PROVIDER_MODE=fake`로 두면 GPU가 만들어지지 않으므로 크레딧이 끊겨도 잃을 것이 없다. 실제 GPU 시연은 맥북 + 터널로 한다.
 
-1. 저장소를 연결하고 `ai-training-cost-optimizer`를 루트로 지정한다 (Dockerfile 자동 인식).
-2. Volume을 만들어 `/data`에 마운트한다.
-3. Replicas를 1로 고정한다.
-4. Variables에 `MVP_PROVIDER_MODE`, `RUNPOD_API_KEY`, `BACKEND_PUBLIC_BASE_URL`, `FRONTEND_ORIGINS`를 넣는다.
-5. 공개 도메인을 발급받아 `BACKEND_PUBLIC_BASE_URL`에 그 주소를 넣는다.
+`railway.json`이 Dockerfile 빌드, `/health` 헬스체크, replica 1개를 지정한다. 웹 UI에서 할 일은 다음뿐이다.
 
-검증 절차(1~3단계)는 Fly와 동일하다.
+1. **New Project → Deploy from GitHub repo** → `2026UNITHON` 선택
+2. 서비스 **Settings**
+   - Root Directory: `ai-training-cost-optimizer`
+   - Branch: `backend`
+   - Serverless(App Sleeping)가 꺼져 있는지 확인한다. 잠들면 실행 중 작업을 아무도 종료하지 못한다
+3. **Variables**
+
+   ```text
+   MVP_PROVIDER_MODE=fake
+   MVP_DATABASE_PATH=/data/mvp.sqlite3
+   MVP_MAX_RUNTIME_MINUTES=10
+   FRONTEND_ORIGINS=<프런트엔드 배포 origin>
+   ```
+
+   `RUNPOD_API_KEY`와 `BACKEND_PUBLIC_BASE_URL`은 넣지 않는다. fake 모드에서는 쓰이지 않는다.
+4. **Volume** 생성 후 마운트 경로를 `/data`로 지정
+5. **Settings → Networking → Generate Domain**으로 공개 주소 발급
+
+### Free 요금제로 충분한가
+
+실측 기준 이 서비스의 유휴 사용량은 메모리 62MB, CPU 0.3%다. Railway 요율(RAM $10/GB·월, CPU $20/vCPU·월, 볼륨 $0.15/GB·월)로 환산하면 월 $0.75 안팎이라 Free의 월 $1 크레딧 안에 들어온다. Free 상한인 replica 1개, 메모리 0.5GB, 볼륨 0.5GB도 모두 만족한다.
+
+폴링이 계속 붙어 CPU가 3%까지 오르면 월 $1.2가 되어 크레딧을 넘길 수 있다. 넘기면 서비스가 멈추고 청구되지는 않는다. fake 모드로만 쓰는 한 이것이 유일한 영향이다.
+
+### 배포 확인
+
+```bash
+curl -i https://<발급받은 주소>/health
+curl -i -X POST https://<발급받은 주소>/api/v1/session
+```
+
+`Set-Cookie`에 `HttpOnly`와 `Secure`가 함께 있어야 한다. 프런트엔드는 이 주소를 `VITE_API_BASE_URL`로 쓰거나, 자신의 배포 도메인에서 `/api`를 이 주소로 프록시한다.
 
 ## 환경변수
 
