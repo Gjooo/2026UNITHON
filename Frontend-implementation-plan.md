@@ -1,268 +1,232 @@
-# UNWORK 학습 실행 Agent — 프런트엔드 구현 계획서
+# UNWORK 학습 실행 Agent — MVP 프런트엔드 구현 계획서
 
 ## 1. 목적과 구현 기준
 
-이 문서는 [PRD-final.md](PRD-final.md)의 제품 기능 전체를 담는 웹 프런트엔드 구현 계획이다. 구현 판단은 아래 문서 순서로 따른다.
+이 문서는 제한된 GPU 선택·실행 MVP의 웹 프런트엔드 구현 계획이다. 구현 판단은 아래 문서 순서로 따른다.
 
-1. [PRD-final.md](PRD-final.md) — 제품 기능과 사람·Agent의 역할 분담
-2. [API-spec.md](API-spec.md) — 합의된 서버 계약. **백엔드 소유 문서이며 프런트엔드는 고치지 않는다.**
-3. [frontend/docs/api-contract.md](frontend/docs/api-contract.md) — 프런트엔드가 PRD에서 도출한 요구 계약 초안. 화면과 MSW fixture는 이것을 따르고, `API-spec.md`와의 차이는 백엔드에 delta로 전달해 합의한다.
-4. [DESIGN.md](DESIGN.md) — 유일한 디자인 기준
-5. [ERD.md](ERD.md) — 데이터 모델. 백엔드 소유 문서다.
+1. [MVP-implementation-plan.md](MVP-implementation-plan.md)
+2. [API-spec.md](API-spec.md)
+3. [ERD.md](ERD.md)
+4. [Backend-implementation-plan.md](Backend-implementation-plan.md)
+5. [PRD-final.md](PRD-final.md) — 장기 제품 방향
 
-화면이 증명해야 할 것은 다음 한 가지다.
+MVP 화면이 증명해야 할 것은 다음 한 가지다.
 
-> 사용자는 학습 목표·예산·완료 조건을 정하고 실행 계약을 승인한다. GPU 종류, Region, CUDA 버전, VM 옵션, SSH, 자원 종료를 직접 조작하지 않는다.
+> 사용자는 최대 예산과 완료 우선순위만 결정하고, Agent가 비교·추천한 실행 계약을 승인한다. 사용자는 GPU 콘솔, GPU type ID, SSH, CUDA, Pod 종료를 직접 조작하지 않는다.
 
-프런트엔드는 실행 계획을 **만들거나 변경하지 않는다.** 서버가 계산한 분석 결과·실행안·비용·위험도를 읽기 전용으로 표시하고, 사용자의 승인·중단·판단만 전달한다.
+프런트엔드는 실행 계획을 **만들거나 변경하지 않는다.** 서버가 `POST /jobs`에서 고정한 `executionPlan`을 읽기 전용 계약으로 표시하고, 사용자의 승인·취소 의사와 현재 Job 상태를 전달한다.
 
-### 범위
+### MVP 프런트엔드 범위
 
-- 익명 세션과 cookie 기반 API 호출
-- GPU 공급자 계정 연결과 연결 상태 표시
-- 학습 Repository·실행 명령·완료 조건·예산·최대 실행시간 입력
-- Agent 분석 결과 표시: 프레임워크·CUDA·의존성·필요 VRAM·기준 실행시간·확신하지 못한 항목
-- 실행안 3개(`가장 저렴함`·`가장 빠름`·`균형형`) 비교: 총비용 분해, 예상 시간, 위험도, 대체 후보, 지원 환경 버전
-- 실행 계약 승인과 승인 직전 재검증(`PLAN_EXPIRED`) 처리
-- 실행 감시: 단계 진행, 경과 시간, 누적 비용, 진행률, 최근 로그
-- 실행 중단
-- 재계획·계속 투자 판단 요청 승인과 거절
-- 결과: artifact, 실행 시간, 추정/실제 비용, 자원 종료 확인
-- 새로고침 복구, 오류 안내, 데스크톱·모바일 반응형, 키보드 접근성
+- 익명 세션 초기화와 cookie 기반 API 호출
+- 최대 예산·우선순위 입력 및 추천 실행 계약 생성
+- GPU 후보 비교, 추천 근거, 추정값 한계 표시
+- 실행 계약 승인과 시작 결과 처리
+- `PROVISIONING`·`RUNNING`·`TERMINATING` 상태의 2.5초 폴링
+- 중단 요청, 성공·실패·중단 완료 화면 및 사용자 오류 안내
+- 데스크톱·모바일 반응형, 키보드 접근성, 로딩·빈 상태
 
-### 프런트엔드가 하지 않는 것
+### 명시적 제외 범위
 
-- 추천 순위·비용·예상 시간·위험도 재계산. 모든 값은 서버가 준 것을 그대로 표시한다.
-- GPU type ID, Region, VM 옵션, 이미지 태그, Provider resource ID, Pod ID 노출
-- Provider 비밀값 저장·재표시. 입력 즉시 서버로 보내고 클라이언트에 남기지 않는다.
-- 실시간 로그 스트림. `execution.logTail` 폴링만 한다.
-- 서버가 주지 않은 값의 추정. `progress`가 `null`이면 진행률을 만들어 내지 않는다.
-
-### 데모 운영
-
-데모는 화면 기능을 좁히지 않는다. 진행자가 [요구 계약 초안의 데모 골든 패스](frontend/docs/api-contract.md#11-데모-골든-패스) 값으로 입력하도록 안내하고, 실행 횟수·동시 실행·Repository allowlist는 서버 배포 정책으로 강제한다. 화면은 해당 오류 코드를 다음 행동과 함께 안내할 뿐, 제품 단계나 실행 성격을 라벨로 붙이지 않는다.
+- Repository·실행 명령·GPU·Provider를 사용자가 입력하거나 수정하는 UI
+- Runpod 콘솔, API 키, resource ID, 이미지명, Pod ID, raw Provider 상태를 보여 주는 UI
+- 실시간 로그 스트림, artifact 다운로드, 실제 비용 계측, 대기열, 재시도, OOM 재계획
+- 로그인·팀·결제·실행 이력 목록
 
 ## 2. 기술 선택과 앱 경계
 
-**React 18 + TypeScript + Vite** 단일 페이지 앱이다. 익명 session cookie가 `SameSite=Lax`이므로 배포 기본값은 frontend와 API를 같은 origin으로 묶는 reverse proxy다.
+현재 저장소에는 웹 앱 구현체가 없으므로, 해커톤 MVP에는 **React 18 + TypeScript + Vite** 단일 페이지 앱을 기준으로 한다. 익명 session cookie가 `SameSite=Lax`인 API 명세를 따르므로, 배포 기본값은 frontend와 API를 같은 origin으로 묶는 reverse proxy다.
 
 | 구분 | 선택 | 이유 |
 | --- | --- | --- |
-| UI 런타임 | React + TypeScript | Job 상태와 화면 상태를 타입으로 분리한다. |
-| 빌드 | Vite | 서버 렌더링이 필요 없다. |
-| 서버 상태 | TanStack Query | 폴링·캐시·중단을 선언적으로 관리한다. |
-| 폼·검증 | React Hook Form + Zod | Repository URL·명령·완료 조건·예산을 API 요청 전 검증한다. |
-| 스타일 | CSS variables + CSS Modules | DESIGN.md 토큰을 직접 유지하고 컴포넌트 라이브러리의 기본 스타일을 피한다. |
-| 아이콘 | Lucide React | 상태·진행·위험을 텍스트와 함께 전달한다. 아이콘만으로 의미를 전달하지 않는다. |
-| 테스트 | Vitest + Testing Library + MSW, Playwright | 계약·상태 전이·오류를 실제 네트워크 없이 검증한다. |
+| UI 런타임 | React + TypeScript | Job 상태와 화면 상태를 타입으로 분리하고, 작은 단일 흐름을 빠르게 구현한다. |
+| 빌드 | Vite | 서버 렌더링이 필요 없는 MVP에 가볍고 빠르다. |
+| 서버 상태 | TanStack Query | `GET /jobs/{id}` 폴링·캐시·중단을 선언적으로 관리한다. |
+| 폼·검증 | React Hook Form + Zod | 예산 정수 및 우선순위 enum을 API 요청 전 검증한다. |
+| 스타일 | CSS variables + CSS Modules 또는 vanilla CSS | 두 디자인 레퍼런스의 토큰을 직접 유지하고, 별도 컴포넌트 라이브러리의 기본 스타일을 피한다. |
+| 아이콘 | Lucide React | 상태·진행·경고를 텍스트와 함께 일관되게 전달한다. 아이콘만으로 의미를 전달하지 않는다. |
+| 테스트 | Vitest + Testing Library + MSW, Playwright | 추천 계약·상태 전이·API 오류를 실제 네트워크 없이 검증하고, 브라우저 흐름을 리허설한다. |
+
+권장 디렉터리 구조는 다음과 같다.
 
 ```text
 frontend/
 ├─ src/
-│  ├─ app/                    # bootstrap, providers, 화면 전환
-│  ├─ api/                    # fetch client, API DTO, error normalizer
-│  ├─ features/
-│  │  ├─ providers/           # 공급자 연결
-│  │  ├─ workload/            # 학습 작업 입력, 분석 결과
-│  │  ├─ plans/               # 실행안 비교, 계약 승인
-│  │  └─ execution/           # 감시, 판단 요청, 결과
-│  ├─ components/ui/          # token 기반 Button, Card, Dialog, Badge
-│  ├─ styles/                 # tokens, global, responsive
-│  ├─ hooks/
-│  └─ test/                   # MSW handlers, fixtures, utilities
+│  ├─ app/                 # App bootstrap, providers, route-level 화면 전환
+│  ├─ api/                 # fetch client, API DTO, error normalizer
+│  ├─ features/training/   # form, plan, approval, job tracking 기능
+│  ├─ components/ui/       # token 기반 Button, Card, Dialog, Badge 등
+│  ├─ styles/              # reset, tokens, global, responsive styles
+│  ├─ hooks/               # useSession, useTrainingJob, useActiveJob
+│  └─ test/                # MSW handlers, fixtures, test utilities
 ├─ .env.example
 └─ package.json
 ```
 
-환경변수는 `VITE_API_BASE_URL` 하나다. 같은 origin 배포에서는 `/api/v1`을 쓴다. 다른 origin을 쓸 경우 두 origin이 same-site여야 하고 backend의 credential CORS allowlist에 정확한 frontend origin이 있어야 한다. 모든 요청은 `credentials: 'include'`로 보낸다.
+### 백엔드 연동
+
+백엔드 `/api/v1`은 `backend` 브랜치에 구현돼 있다. 브랜치를 병합하지 않고 포트만 열어 두면 붙는다.
+
+```bash
+# 백엔드 (fake provider 모드 — 실제 Runpod 호출도 비용도 없다)
+export MVP_PROVIDER_MODE=fake MVP_COOKIE_SECURE=false
+python -m uvicorn training_cost_optimizer.api:app --port 8000
+```
+
+`vite.config.ts`의 dev proxy가 `/api`를 `http://127.0.0.1:8000`으로 넘긴다. 브라우저 기준 same-origin이 되어 CORS와 `SameSite=Lax` 쿠키 문제를 함께 피한다. `VITE_DEV_API_TARGET`으로 대상을 바꿀 수 있다.
+
+`MVP_COOKIE_SECURE=false`가 없으면 `Secure` 쿠키가 `http://`로 전송되지 않아 세션이 매 요청 끊긴다. 배포 환경에서는 기본값 `true`를 유지한다.
+
+fake 모드에서 Pod는 약 10초 뒤 `RUNNING`이 되고 서버 감시 주기가 5초라 `PROVISIONING → RUNNING`은 10~15초 걸린다. 학습 컨테이너가 로컬에 없으므로 완료 화면은 완료 callback을 직접 호출해 확인한다.
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/internal/jobs/<jobId>/completion \
+  -H 'Content-Type: application/json' \
+  -d '{"outcome":"SUCCEEDED","exitCode":0,"message":"Training completed"}'
+```
+
+환경변수는 `VITE_API_BASE_URL` 하나를 둔다. 같은 origin 배포에서는 빈 문자열 또는 `/api/v1` 상대 경로를 사용한다. 다른 origin을 쓸 경우에는 두 origin이 same-site여야 하고, backend의 credential CORS allowlist에도 정확한 frontend origin이 있어야 한다. `SameSite=Lax` cookie만으로는 서로 다른 site 간 XHR 세션을 유지할 수 없다. 모든 요청은 `credentials: 'include'`로 보내 HttpOnly 세션 cookie를 포함한다. 브라우저에서 Provider 비밀값을 읽거나 저장하지 않는다.
 
 ## 3. 정보 구조와 화면 흐름
 
-메인 route 하나 안에서 단계별 화면을 전환한다. 새로고침 복구를 위해 현재 Job ID만 `localStorage`의 `unwork.activeJobId`에 저장한다. 서버의 cookie 소유권 검사가 남아 있으므로 이 값은 인증 정보가 아니다. `401` 또는 `404`이면 즉시 제거한다.
+별도 계정·대시보드·Job 목록이 없는 MVP이므로, 메인 route 하나 안에서 단계별 화면을 전환한다. 새로고침 복구를 위해 현재 Job ID만 `localStorage`의 `unwork.activeJobId`에 저장한다. UUID만으로는 Job을 읽을 수 없고 서버 cookie 소유권 검사가 남아 있으므로, 이 저장값은 인증 정보가 아니다. `401` 또는 `404`이면 즉시 제거한다.
 
 ```text
-앱 초기화 POST /session
-  → 공급자 연결 확인 GET /providers
-  → 학습 작업 입력
+앱 초기화
+  → POST /session
+  → 제약 입력
   → POST /jobs
-  → 분석 진행        ANALYZING
-  → 실행안 검토      PLAN_READY
-  → POST /jobs/{id}/approve
-  → 실행 감시        PROVISIONING → PREPARING → RUNNING
-  → (필요할 때만)    AWAITING_DECISION
-  → 종료 확인        TERMINATING
-  → 결과             COMPLETED / FAILED / CANCELLED / BUDGET_STOPPED
+  → 실행 계약 검토 (DRAFT)
+  → POST /jobs/{id}/start
+  → Job 추적 (PROVISIONING / RUNNING / TERMINATING)
+  → 최종 결과 (COMPLETED / FAILED / CANCELLED)
 ```
 
-| 화면 상태 | 주 목적 | 주 API | 사용자 행동 |
+| 화면 상태 | 주 목적 | 주 API | 가능한 사용자 행동 |
 | --- | --- | --- | --- |
-| `PROVIDERS` | 공급자 연결 상태 확인과 연결 | `GET /providers`, `POST /providers/{id}/credential` | 연결, 해제, 다음으로 |
-| `WORKLOAD` | 학습 작업과 예산·완료 조건 입력 | `POST /jobs` | 입력, 제출 |
-| `ANALYZING` | Agent가 코드를 읽는 중임을 알림 | `GET /jobs/{id}` 2초 폴링 | 취소하고 입력으로 |
-| `PLAN_REVIEW` | 실행안 3개 비교와 계약 확인 | `GET /jobs/{id}` | 실행안 선택, 승인, 입력 수정 |
-| `APPROVING` | 중복 승인 방지 | `POST /jobs/{id}/approve` | 없음 |
-| `EXECUTION` | 단계·경과·비용·진행률 표시 | `GET /jobs/{id}` 3초 폴링 | 실행 중단 |
-| `DECISION` | 재계획·계속 투자 판단 | `POST /jobs/{id}/decisions/{id}` | 승인, 여기서 중단 |
-| `RESULT` | 결과·artifact·종료 확인 | `GET /jobs/{id}` | artifact 받기, 새 작업 시작 |
+| `CONFIGURE` | 제약을 두 가지로 한정해 입력 | `POST /session` | 예산 입력, 우선순위 선택, 실행안 비교 |
+| `PLAN_LOADING` | Agent가 후보를 비교 중임을 알림 | `POST /jobs` | 이전 화면으로 돌아가기 |
+| `PLAN_REVIEW` | 고정된 추천 실행 계약을 읽고 승인 | `POST /jobs/{id}` | 승인, 제약 수정 후 새 비교 |
+| `STARTING` | 중복 승인 방지 및 시작 결과 대기 | `POST /jobs/{id}/start` | 없음 |
+| `TRACKING` | Job 상태·선택 GPU·경과 시간 표시 | `GET /jobs/{id}` | 실행 중단 (`RUNNING`/`PROVISIONING`) |
+| `RESULT` | 최종 결과와 종료 확인 전달 | `GET /jobs/{id}` | 새 실행안 만들기(실행 소진 여부에 따라 안내) |
 
-페이지를 다시 열면 `POST /session` 후 `activeJobId`가 있으면 `GET /jobs/{id}`로 서버 상태에 맞는 화면을 복구한다. 조회 실패 시 저장값을 지우고 새 흐름을 시작한다. 브라우저가 닫힌 동안 실행 생애주기는 백엔드가 소유하며, 프런트엔드는 재접속 시 상태를 표시할 뿐이다.
+페이지를 다시 열면 먼저 `POST /session`으로 기존 cookie 세션을 갱신한 뒤, `activeJobId`가 있으면 `GET /jobs/{id}`를 호출한다. 조회 성공 시 서버 상태에 맞는 계약 검토·추적·결과 화면으로 복구한다. 조회 실패 시 저장값을 지우고 새 세션/입력 화면을 보여 준다. 브라우저가 닫힌 동안 Pod 생애주기는 백엔드 Worker가 소유하며, 프런트엔드는 재접속 시 결과를 표시할 뿐 실행을 이어서 제어하지 않는다.
 
 ## 4. 화면 및 컴포넌트 명세
 
 ### 4.1 공통 App shell
 
-- 상단 바: `UNWORK` 워드마크와 우측 세션 상태만 둔다. 로그인·설정 메뉴는 두지 않는다. 제품 단계(`MVP`)나 실행 성격(`데모`)을 라벨로 붙이지 않는다.
+- 상단 바: `UNWORK` 워드마크와 우측 세션 상태만 둔다. 로그인·Provider 연결·설정 메뉴는 두지 않는다. 제품 단계(`MVP`)나 실행 성격(`데모`)을 라벨로 붙이지 않는다. 고정 workload는 시나리오 카드가 이미 설명하므로 상단 바에서 반복하지 않는다.
 - 세션 상태는 `세션 준비 중`(제출 CTA가 비활성인 이유), `익명 세션`(로그인 없이 이 브라우저에서만 작업을 볼 수 있다는 뜻), `세션을 시작하지 못했어요`(재시도 필요) 세 가지다.
-- 본문: desktop 최대 폭 1,180px, 상단 48px / 하단 64px 여백.
-- 모바일: 단일 열, 핵심 CTA는 화면 하단 sticky action bar.
-- 공통 `SystemNotice`: 추정값, 세션, API 오류 안내를 보여 주며 경고와 오류를 구별한다.
+- 본문: desktop 최대 폭 1,180px, 상단 48px / 하단 64px 여백. 계약 검토 화면은 좌측 제약 요약(4/12), 우측 실행안(8/12)의 2열이다.
+- 모바일: 단일 열로 접고, 상단 바는 워드마크와 상태 점만 남긴다. 핵심 CTA는 화면 하단의 sticky action bar에 둔다.
+- 공통 `SystemNotice`: 추정값, 세션, API 오류 같은 제품 안내를 보여 주며 경고와 오류를 구별한다.
 
-**문구 원칙.** 화면에는 제품 단계나 실행 성격을 가리키는 라벨(`MVP`, `데모`, `프로토타입`)을 쓰지 않는다. 라벨은 사용자가 부딪히는 제약을 설명하지 못한다. 제약은 라벨 대신 결과로 적는다 — 실행 횟수가 제한된 것, 대기열이 없는 것, 비용이 추정값인 것을 각각 그 자리에서 문장으로 밝힌다. `PLAN_EXPIRED`, `CONCURRENT_EXECUTION_LIMIT` 같은 API code는 내부 값이므로 그대로 노출하지 않는다.
+**문구 원칙.** 화면에는 제품 단계나 실행 성격을 가리키는 라벨(`MVP`, `데모`, `프로토타입`)을 쓰지 않는다. 라벨은 사용자가 부딪히는 제약을 설명하지 못한다. 제약은 라벨 대신 결과로 적는다 — 실행이 1회인 것, 대기열이 없는 것, 비용이 추정값인 것, 작업이 고정된 것을 각각 그 자리에서 문장으로 밝힌다. `DEMO_BUSY`, `DEMO_SNAPSHOT` 같은 API code는 내부 값이므로 그대로 노출하지 않는다.
 
-### 4.2 공급자 연결 (`ProviderConnection`)
+### 4.2 제약 입력 (`ConstraintForm`)
 
-- 공급자마다 이름, 연결 상태, 연결 시각, 비교 가능한 GPU 종류 수를 한 줄로 보여 준다.
-- `connectionStatus`가 `CONNECTED`가 아니면 상태와 다음 행동을 함께 적는다. `INVALID_CREDENTIAL`은 다시 연결, `UNREACHABLE`은 잠시 후 다시 확인이다.
-- 연결 입력은 `type="password"`이고 값을 클라이언트에 저장하지 않는다. 전송 성공 뒤 필드를 비우고 `GET /providers`를 다시 읽는다. 저장된 키를 다시 표시하는 UI는 만들지 않는다.
-- 연결된 공급자가 하나도 없으면 학습 작업 제출을 막고 그 이유를 적는다.
-- 연결이 여러 곳이면 "연결된 공급자 N곳에서 비교합니다"를 학습 작업 화면에도 표시한다.
-
-### 4.3 학습 작업 입력 (`WorkloadForm`)
-
-사용자가 결정하는 것은 **무엇을 학습할지, 얼마를 쓸지, 무엇을 완료로 볼지**다. GPU·Region·CUDA·VM 옵션은 필드로도 고급 설정으로도 노출하지 않는다.
+입력은 다음 두 개만 제공한다. GPU 종류, 공급자, 명령, 최대 실행 시간은 필드나 고급 설정으로도 노출하지 않는다.
 
 | 요소 | 구현 | 검증·행동 |
 | --- | --- | --- |
-| Repository | `repositoryUrl` 텍스트 입력 | http/https Git URL. 형식 오류는 `aria-describedby`로 연결한다. |
-| Revision | `revision` 텍스트 입력, 선택 사항 | 비우면 기본 branch를 쓴다고 helper에 적는다. |
-| 실행 명령 | `executionCommand` 텍스트 입력, mono | Repository 루트 기준임을 helper에 적는다. |
-| 완료 조건 | `PROCESS_EXIT` / `MAX_STEPS` / `TARGET_METRIC` 선택 + 조건부 필드 | 선택에 따라 step 수 또는 지표명·목표값을 요구한다. |
-| 최대 예산 | `₩` prefix 숫자 입력 | 0보다 큰 정수. 쉼표는 표시 전용, API에는 number를 보낸다. |
-| 최대 실행시간 | 분 단위 숫자 입력 | 0보다 큰 정수. 초과 시 Agent가 중단한다고 helper에 적는다. |
-| 제출 CTA | `Agent에게 실행안 요청` | 유효할 때만 활성화하고 제출 중 중복 요청을 막는다. |
+| 최대 예산 | `₩` prefix와 숫자 입력을 가진 `BudgetInput` | 0보다 큰 정수만 허용한다. 쉼표 표시는 view layer에서만 적용하고 API에는 number를 전송한다. |
+| 우선순위 | `CHEAPEST` / `BALANCED` / `FASTEST` 3개 선택 카드 | 사람이 읽는 제목은 `저비용`·`균형`·`빠른 완료`, 보조문은 각각 비용·시간의 선택 기준을 설명한다. 선택값만 API enum으로 변환한다. |
+| 고정 시나리오 | 읽기 전용 `ScenarioSummary` | `Stable Diffusion 1.5 LoRA`, 필요 VRAM 24GB, 최대 10분을 알려 주고 “사전 검증된 고정 작업”임을 명시한다. 사용자가 학습 코드를 입력하지 않는 이유를 이 카드가 설명한다. |
+| 비교 CTA | `Agent에게 실행안 요청` | 유효할 때만 활성화한다. 제출 중에는 중복 요청을 막는다. |
 
-폼 아래에는 “예상 비용은 실제 청구액을 보장하지 않습니다. Agent는 승인 직전에 가격과 가용성을 다시 확인합니다.”를 항상 표시한다.
+폼 아래에는 “예상 비용은 실제 청구액을 제한하지 않으며, Agent는 사전 검증된 실행안 중에서만 선택합니다.”를 항상 표시한다. `NO_ELIGIBLE_PLAN`은 인라인 오류 영역에 보여 주고 입력한 예산은 유지한다.
 
-### 4.4 분석 결과 (`AnalysisPanel`)
+### 4.3 실행 계약 검토 (`ExecutionPlanReview`)
 
-- `ANALYZING` 중에는 Agent가 하는 일을 단계로 보여 준다 — Repository 읽기, 의존성 확인, GPU 후보 비교. 진행률을 지어내지 않는다.
-- `READY`가 되면 프레임워크·버전, CUDA, Python, 감지한 의존성, 필요 VRAM, 기준 실행시간, `confidence`를 표시한다.
-- `analysis.unknowns`는 접어 두지 않고 항상 보인다. 이것이 추정값의 근거를 사용자가 판단하게 하는 유일한 자리다.
-- `ANALYSIS_FAILED`는 입력을 유지한 채 무엇을 확인해야 하는지 적는다. Repository URL과 실행 명령은 지우지 않는다.
+`POST /jobs` 응답 전체가 화면의 유일한 데이터 원본이다. 클라이언트는 추천 순위·비용·시간을 재계산하지 않는다.
 
-### 4.5 실행안 비교 (`PlanComparison`)
+- `RecommendedPlanCard`: 선택 GPU 이름, Provider(`Runpod`), 예상 실행 시간, 예상 GPU 비용, 서버가 준 `reason`을 가장 먼저 보여 준다. `recommended.profileId`는 화면에 노출하지 않는다.
+- `CandidateComparison`: desktop은 표(`GPU`, `예상 시간`, `예상 GPU 비용`, `예산 적합 여부`, `추천 여부`), mobile은 후보 카드 목록이다. `OVER_BUDGET` 후보도 비교 근거로 보이되 선택 불가·비추천 상태로 표시한다.
+- `ContractDetails`: 고정 시나리오, 최대 예산, 선택한 우선순위, 최대 실행 시간, `DEMO_SNAPSHOT` 배지와 API의 `estimateDisclaimer`를 표시한다. Repository URL·실행 명령은 기본 화면에서 감추고 “고정 워크로드 정보” disclosure 안에서만 읽기 전용으로 제공한다.
+- `ApprovalPanel`: “승인 후 Agent가 선택된 환경을 생성하고 비용이 발생할 수 있습니다.”를 적고 `실행 승인` CTA와 `제약 수정` 보조 행동을 둔다. GPU 변경 버튼은 만들지 않는다.
 
-`GET /jobs/{id}`의 `plans`가 화면의 유일한 데이터 원본이다. 클라이언트는 순위·비용·시간·위험도를 재계산하지 않는다.
+`실행 승인`은 확인 dialog를 연다. dialog에는 선택 GPU, 예상 시간·비용, 예산은 실제 한도가 아니라는 안내, 한 세션에서 실제 실행은 1회라는 점을 다시 표시한다. 확인하면 `POST /jobs/{id}/start`를 한 번만 호출한다.
 
-- `PlanCard` 3개를 `CHEAPEST` → `FASTEST` → `BALANCED` 순서로 고정 배치한다. 서버가 `recommended: true`를 준 안에 추천 배지를 붙이되, 세 안 모두 승인할 수 있다.
-- 각 카드는 GPU·공급자, 예상 실행 시간, **총비용**을 먼저 보여 주고, `CostBreakdown` disclosure에 GPU 사용료·저장소/전송비·Agent 실행 수수료를 나눠 적는다. 시간당 단가는 비교 축이 아니다.
-- `RiskBadge`는 `level`과 `reasons`를 함께 보여 준다. 위험도를 비용에 섞지 않는다. hover에만 이유를 넣지 않는다.
-- `alternatives`는 "이 안이 중단되면 제안할 후보"로 항상 보인다.
-- `environment`(프레임워크·CUDA·Python 버전, `verified`)를 카드 안에 적는다. 이미지 태그나 resource ID는 적지 않는다.
-- `budget.withinBudget: false`인 안은 비교 근거로 보이되 선택할 수 없고, `shortfallKrw`로 얼마가 모자라는지 적는다.
-- `priceDataType: SNAPSHOT`이면 실시간 가격이 아님을 `pricedAt`과 함께 표시한다.
+### 4.4 실행 추적 (`JobTracker`)
 
-### 4.6 실행 계약 승인 (`ContractApproval`)
+추적 화면은 상태를 숨기지 않되 사용자가 인프라를 조작하는 콘솔처럼 보이지 않아야 한다. 항상 Agent가 선택한 `gpuType`, 시작 후 경과 시간, 고정 최대 실행 시간(10분)을 보여 준다. 경과 시간은 `startedAt`을 기준으로 클라이언트에서 갱신하는 표시용 값이며, timeout 판단은 서버가 수행한다.
 
-- `ContractSummary`: 선택 실행안, 고정 commit SHA, 실행 명령, 완료 조건, 예산, 최대 실행시간, 자동 중단 조건(`autoStop`)을 한자리에 모은다.
-- `승인 후 Agent가 환경을 만들고 비용이 발생합니다.`를 적고 `실행 승인` CTA와 `입력 수정` 보조 행동을 둔다. GPU 변경 버튼은 만들지 않는다.
-- `실행 승인`은 확인 dialog를 연다. dialog에는 선택 GPU·공급자, 예상 총비용, 자동 중단 조건, 예산이 실제 청구 한도가 아니라는 안내를 다시 표시한다. 확인하면 `POST /jobs/{id}/approve`를 한 번만 호출한다.
-- `409 PLAN_EXPIRED`를 받으면 승인하지 않고, 응답의 갱신된 실행안으로 비교 화면을 교체한 뒤 무엇이 달라졌는지 적는다. 이전 실행안으로 승인을 재시도하지 않는다.
+| API 상태 | 사용자 제목 | 상태 표현 | 행동 |
+| --- | --- | --- | --- |
+| `PROVISIONING` | 실행 환경을 준비하고 있어요 | 첫 단계 active, “Agent가 선택한 GPU로 Pod를 생성 중” | 중단 가능 |
+| `RUNNING` | 학습을 실행하고 있어요 | 두 번째 단계 active, 펄스 상태 점 | `실행 중단` |
+| `TERMINATING` | Pod 자동 종료를 확인하고 있어요 | 세 번째 단계 active, final 결과를 아직 표시하지 않음 | 모든 action 비활성 |
+| `COMPLETED` | 학습이 완료됐어요 | 완료 체크 | 새 실행안 만들기 안내 |
+| `FAILED` | 학습이 완료되지 않았어요 | 실패 상태 | 원인 확인, 새 실행안 만들기 안내 |
+| `CANCELLED` | 실행이 중단됐어요 | 중단 상태 | 새 실행안 만들기 안내 |
 
-### 4.7 실행 감시 (`ExecutionMonitor`)
+`RUNNING`과 `PROVISIONING`에서만 중단 버튼을 표시한다. 누르면 destructive confirmation dialog를 열고, 확인 시 `POST /jobs/{id}/cancel`을 호출한다. `202`를 받으면 즉시 `TERMINATING` UI로 전환하고 polling을 유지한다. 서버가 `CANCELLED`를 반환하기 전에는 “중단 완료”라고 표시하지 않는다.
 
-인프라 콘솔처럼 보이지 않으면서 상태를 숨기지도 않는다.
+### 4.5 최종 결과 (`JobResult`)
 
-- `StepTimeline`: `execution.steps`를 서버 순서대로 표시한다. `DONE` / `ACTIVE` / `PENDING`을 아이콘과 텍스트로 함께 전달한다.
-- 항상 보이는 값: 선택 GPU·공급자, 경과 시간, 최대 실행시간, 누적 비용과 예산 사용률.
-- `CostMeter`: `cost.dataType`이 `ESTIMATED`면 계측값이 아님을 적는다. `METERED`와 시각적으로 구별한다.
-- `progress`가 `null`이면 진행률 막대를 그리지 않고 "진행률을 확인할 수 없습니다"를 적는다.
-- `logTail`은 `--canvas-night` code block에 mono로 최근 줄만 보여 준다. 자동 스크롤로 focus를 빼앗지 않는다.
-- `TERMINATING`에서는 모든 action을 비활성화하고 최종 결과를 표시하지 않는다. 오래 지속되면 "자원 종료 확인을 계속 기다리고 있습니다"와 마지막 갱신 시각을 적는다.
-- 중단 버튼은 `PROVISIONING`·`PREPARING`·`RUNNING`·`AWAITING_DECISION`에서만 보인다. 누르면 destructive confirmation dialog를 열고, 확인 시 `POST /jobs/{id}/cancel`을 호출한다. `202` 뒤 즉시 `TERMINATING` UI로 전환하되, 서버가 `CANCELLED`를 주기 전에는 "중단 완료"라고 쓰지 않는다.
-
-### 4.8 판단 요청 (`DecisionPanel`)
-
-`pendingDecision`이 있을 때만 나타난다. 정상 경로에서는 보이지 않는다.
-
-- `reason`을 가장 먼저 보여 준다. 왜 사람의 판단이 필요한지가 첫 문장이다.
-- `current`(지금까지 쓴 비용, 완료 비율)와 `proposed`(새 실행안 전문)를 나란히 놓는다.
-- `delta`의 추가 비용, 추가 시간, GPU 변경 여부, checkpoint 재개 여부를 명시한다. 추가 비용은 총액이 아니라 **증분**으로 적는다.
-- 행동은 `제안대로 계속`과 `여기서 중단` 둘뿐이다. 둘 다 확인 dialog를 거친다.
-- `expiresAt`까지 남은 시간을 표시하고, 만료되면 서버가 중단으로 처리한다고 적는다. 만료 뒤 응답은 `409 DECISION_ALREADY_RESOLVED`로 처리한다.
-
-### 4.9 결과 (`ResultPanel`)
-
-- 공통: `outcome`, 선택 GPU·공급자, 시작·완료 시각, 실행 시간, 추정 비용과 실제 비용, 자원 종료 확인.
-- `cost.actualTotalKrw`가 `null`이면 실제 비용 자리에 추정값을 넣지 않는다. "실제 청구액을 아직 확인하지 못했습니다"로 적는다.
-- `resourceTeardown.status`: `CONFIRMED`는 완료 체크, `PENDING`은 확인 중, `UNCONFIRMED`는 실패가 아니라 **확인되지 않은 상태**로 따로 표시하고 다음 행동을 적는다.
-- 성공: `completionLog`, `exitCode`, `artifacts` 목록. artifact는 이름·종류·크기를 보여 주고 받기 행동을 제공한다.
-- 실패: `failureMessage`를 먼저 보여 주고 `exitCode`·`completionLog`는 세부 정보 disclosure에 둔다. 재시도 가능성을 추정해 말하지 않는다. `checkpoints`가 있으면 보존됐음을 알린다.
-- `BUDGET_STOPPED`: 어떤 상한(예산 또는 시간)에 도달해 Agent가 중단했는지 적는다.
-- 중단: 사용자의 중단 요청과 자원 종료 확인을 보여 준다.
-- 최종 화면의 `새 학습 작업`은 입력 화면으로 이동한다. 세션 실행 허용 횟수를 모두 쓴 경우에는 그 사실과 다음 행동을 적는다.
+- 공통: 선택 GPU, 시작·완료 시각, 실행 시간, Pod 종료 확인 여부를 표기한다. `podTerminatedAt`이 있는 경우에만 `Pod 자동 종료 완료` 체크를 보여 준다.
+- 성공: `completionLog`, `exitCode: 0`, 선택 GPU, 실행 시간과 종료 확인을 표시한다.
+- 실패: `failureMessage`를 우선 표시하고, `exitCode`나 `completionLog`가 있으면 세부 정보 disclosure에 표시한다. 실제 비용이나 재시도 가능성을 추정해 말하지 않는다.
+- 중단: 사용자의 중단 요청을 확인하고 Pod 종료 확인을 보여 준다.
+- 최종 화면의 “새 실행안 만들기”는 입력 화면으로 이동한다. 이미 실행을 사용한 동일 세션에는 버튼 대신 “이 브라우저에서는 실제 실행을 한 번만 할 수 있습니다.”를 표시한다. 새 Job의 **비용 없는 비교**는 허용되므로, 별도 `다시 비교` 행동은 제공할 수 있다.
 
 ## 5. API 연동과 상태 관리
 
-`api/client.ts`는 base URL, JSON headers, `credentials: 'include'`, `AbortSignal`, 공통 오류 파싱만 담당한다. API DTO는 명세의 camelCase를 그대로 쓰고, UI label·색상·문구는 DTO 밖 presenter에서 관리한다.
+### API client
 
-| 함수 | HTTP | 호출 시점 |
-| --- | --- | --- |
-| `createSession()` | `POST /session` | 앱 진입, 세션 복구 실패 후 |
-| `getProviders()` | `GET /providers` | 앱 진입, 연결 mutation 직후 |
-| `connectProvider(id, apiKey)` | `POST /providers/{id}/credential` | 연결 폼 제출 |
-| `disconnectProvider(id)` | `DELETE /providers/{id}/credential` | 연결 해제 확인 |
-| `createJob(input)` | `POST /jobs` | 유효한 학습 작업 폼 제출 |
-| `getJob(id)` | `GET /jobs/{id}` | 복구, 폴링, mutation 직후 재검증 |
-| `approveJob(id, planId)` | `POST /jobs/{id}/approve` | 승인 dialog 확인 |
-| `cancelJob(id)` | `POST /jobs/{id}/cancel` | 중단 dialog 확인 |
-| `resolveDecision(id, decisionId, outcome)` | `POST /jobs/{id}/decisions/{decisionId}` | 판단 dialog 확인 |
+`api/client.ts`는 base URL, JSON headers, `credentials: 'include'`, `AbortSignal`, 공통 오류 파싱만 담당한다. API DTO는 백엔드 명세의 camelCase를 그대로 사용하고, UI용 label·색상·문구는 DTO 밖의 presenter에서 관리한다.
+
+| 함수 | HTTP | 호출 시점 | UI 처리 |
+| --- | --- | --- | --- |
+| `createSession()` | `POST /api/v1/session` | 앱 최초 진입, 세션 복구 실패 후 | cookie 기반 세션을 보장하고 `executionAllowance`로 남은 실행 횟수를 받는다. |
+| `createJob(constraint)` | `POST /api/v1/jobs` | 유효한 제약 폼 제출 | `TrainingJob`을 저장하고 계약 검토로 전환한다. |
+| `getJob(jobId)` | `GET /api/v1/jobs/{id}` | 복구, 상태 polling, mutation 직후 재검증 | 서버 Job을 화면의 source of truth로 둔다. |
+| `startJob(jobId)` | `POST /api/v1/jobs/{id}/start` | 승인 dialog 확인 | `202` 뒤 `getJob`을 즉시 갱신한다. |
+| `cancelJob(jobId)` | `POST /api/v1/jobs/{id}/cancel` | 중단 dialog 확인 | `202` 뒤 `TERMINATING` 상태로 갱신한다. |
 
 ### 클라이언트 상태 원칙
 
-- 서버 상태: `TrainingJob`은 TanStack Query cache에만 두고 mutation 성공 뒤 반드시 `GET /jobs/{id}`로 무효화한다.
-- UI 상태: 폼 값, dialog 열림 여부, 선택한 실행안 ID, 화면 전환만 React local state/reducer에 둔다.
-- 계약 불변: 승인 뒤에는 `contract.planSnapshot`이 화면의 근거다. 이후 `plans`가 바뀌어도 승인된 계약 표시를 바꾸지 않는다.
-- 중복 방지: 승인·중단·판단 mutation 동안 관련 CTA를 disabled한다. 최종 동시성 제어는 백엔드 transaction이 담당한다.
-- 비밀값: Provider API 키는 mutation 인자로만 존재하고 state·cache·localStorage 어디에도 남기지 않는다.
-- 저장: Job ID를 만든 즉시 localStorage에 기록하고, 사용자가 새 작업을 시작하기 전까지 보관한다.
+- 서버 상태: `TrainingJob`은 TanStack Query cache에만 보관하고 mutation 성공 뒤 반드시 `GET /jobs/{id}`로 무효화한다.
+- UI 상태: 폼 값, dialog 열림 여부, 현재 화면 전환만 React local state/reducer에 둔다.
+- 계약 불변: `DRAFT` Job을 만든 뒤 폼을 수정해도 기존 `executionPlan`을 바꾸지 않는다. 수정 후 비교는 새 `POST /jobs`로만 만든다.
+- 중복 방지: 시작·취소 mutation 동안 관련 CTA를 disabled한다. 이는 보조 장치이며 최종 동시성 제어는 백엔드 transaction이 담당한다.
+- 저장: Job ID를 만든 즉시 localStorage에 기록하고, 최종 Job도 사용자가 새 흐름을 시작하기 전까지 보관한다.
 
-### 폴링 정책
+### Polling 정책
 
 ```text
-status = ANALYZING
-  → GET /jobs/{id} every 2,000ms
-status ∈ {PROVISIONING, PREPARING, RUNNING, AWAITING_DECISION, TERMINATING}
-  → GET /jobs/{id} every 3,000ms
-status ∈ {PLAN_READY, ANALYSIS_FAILED, COMPLETED, FAILED, CANCELLED, BUDGET_STOPPED}
+status ∈ {PROVISIONING, RUNNING, TERMINATING}
+  → GET /jobs/{id} every 2,500ms
+status ∈ {COMPLETED, FAILED, CANCELLED}
   → polling stop
 ```
 
-- 화면이 foreground로 돌아오거나 mutation이 끝나면 즉시 한 번 refetch한다.
-- 네트워크 오류는 마지막 정상 상태를 유지하고 "연결을 다시 확인하는 중"을 표시한다. 연속 실패는 지수 backoff(3초, 6초, 최대 15초)로 전환하며 최종 상태를 임의로 추정하지 않는다.
-- `401`(`SESSION_REQUIRED`/`SESSION_EXPIRED`) 또는 `404 JOB_NOT_FOUND`는 폴링을 중단하고 저장된 Job ID를 제거한 뒤 세션 재시작을 안내한다.
+- 화면이 다시 foreground가 되거나 start/cancel mutation이 끝나면 즉시 한 번 refetch한다.
+- 네트워크 오류는 현재의 마지막 정상 상태를 유지하고 “연결을 다시 확인하는 중” 안내를 표시한다. 연속 실패는 지수 backoff(2.5초, 5초, 최대 15초)로 전환하며 최종 상태를 임의로 추정하지 않는다.
+- `401 SESSION_REQUIRED`/`SESSION_EXPIRED` 또는 `404 JOB_NOT_FOUND`는 polling을 중단하고 localStorage Job ID를 제거한 뒤 세션 재시작 안내를 보여 준다.
+- `TERMINATING`이 오래 지속돼도 완료·실패·취소를 앞당겨 표시하지 않는다. “Pod 종료 확인을 계속 기다리고 있습니다.”와 마지막 갱신 시각을 표시한다.
 
 ## 6. 오류와 예외 상태 문구
 
-오류 code는 그대로 던지지 않고 아래로 번역한다. 개발 모드에서만 원본 code를 디버그 정보로 볼 수 있다.
+오류 code는 사용자에게 그대로 던지지 않고 아래와 같이 번역한다. 개발 모드에서만 원본 code를 디버그 정보로 볼 수 있다.
+
+번역 기준은 서버가 준 `message`가 아니라 **`code`**다. 서버 문구가 바뀌어도 화면이 흔들리지 않고, `DEMO_BUSY`·`DEMO_SNAPSHOT` 같은 기계 판독 값이 화면에 새어 나가지 않는다.
 
 | 코드 | 보여 줄 메시지 | 가능한 행동 |
 | --- | --- | --- |
-| `VALIDATION_ERROR` | 입력한 값을 다시 확인해 주세요. | 폼 수정 |
-| `ANALYSIS_FAILED` | Repository와 실행 명령을 분석하지 못했습니다. 접근 가능한 주소인지, 명령이 Repository 루트에서 실행되는지 확인해 주세요. | 입력 수정 후 다시 요청 |
-| `NO_ELIGIBLE_PLAN` | 이 예산 안에서 실행할 수 있는 GPU 후보가 없습니다. 최소 ₩{minimumRequiredBudgetKrw}이 필요합니다. | 예산 조정 후 다시 요청 |
-| `NO_PROVIDER_CONNECTED` | 연결된 GPU 공급자가 없어 실행안을 만들 수 없습니다. | 공급자 연결 |
-| `PLAN_EXPIRED` | 가격 또는 가용성이 바뀌어 실행안을 다시 만들었습니다. 새 실행안을 확인해 주세요. | 갱신된 실행안 검토 후 재승인 |
+| `VALIDATION_ERROR` | 입력한 예산과 우선순위를 다시 확인해 주세요. | 폼 수정 |
+| `NO_ELIGIBLE_PLAN` | 이 예산 안에서 실행할 수 있는 GPU 후보가 없습니다. | 예산 조정 후 다시 비교 |
+| `DEMO_BUSY` | 지금은 다른 실행이 진행 중입니다. 대기열이 없으니 잠시 후 다시 승인해 주세요. | 계약을 유지하고 나중에 승인 재시도 |
+| `EXECUTION_ALREADY_USED` | 이 브라우저에서는 실제 실행을 한 번만 할 수 있습니다. | 비용 없는 비교 또는 새 브라우저 세션 안내 |
 | `INVALID_JOB_STATE` | 이 작업은 현재 이 행동을 할 수 있는 상태가 아닙니다. | 최신 상태 다시 확인 |
-| `DECISION_ALREADY_RESOLVED` | 이 판단 요청은 이미 처리됐습니다. | 최신 상태 다시 확인 |
-| `CONCURRENT_EXECUTION_LIMIT` | 지금은 다른 실행이 진행 중입니다. 대기열이 없으니 잠시 후 다시 승인해 주세요. | 계약을 유지하고 나중에 재시도 |
-| `EXECUTION_LIMIT_REACHED` | 이 브라우저에서는 실제 실행을 한 번만 할 수 있습니다. | 비용 없는 비교 또는 새 브라우저 세션 |
-| `PROVIDER_UNAVAILABLE` | 공급자에 연결하지 못했습니다. 잠시 후 다시 확인해 주세요. | 새로고침, 자동 재시도 없음 |
+| `RUNPOD_UNAVAILABLE` | 실행 환경을 시작하거나 확인하지 못했습니다. 서버 상태를 다시 확인해 주세요. | Job 새로고침; 자동 재시도 없음 |
 | `SESSION_REQUIRED` / `SESSION_EXPIRED` | 세션이 만료됐습니다. 새 세션을 시작해 주세요. | 세션 재시작 |
-| `JOB_NOT_FOUND` | 이 작업을 찾을 수 없거나 현재 세션에서 볼 수 없습니다. | 새 학습 작업 시작 |
+| `JOB_NOT_FOUND` | 이 작업을 찾을 수 없거나 현재 세션에서 볼 수 없습니다. | 새 실행안 만들기 |
 | 알 수 없는 네트워크 오류 | 연결 상태를 확인한 뒤 다시 시도해 주세요. | 동일 행동 재시도 |
 
-오류 메시지에는 API key, request payload, Provider resource ID, raw stack trace를 포함하지 않는다. toast는 일시적 요청 실패에만 쓰고, 현재 흐름을 바꾸는 오류는 해당 화면 상단 alert로 고정한다.
+오류 메시지에는 API key, request payload, Pod ID, raw stack trace를 포함하지 않는다. 오류 toast는 일시적 요청 실패에만 사용하고, 현재 흐름을 바꾸는 오류는 해당 화면의 상단 alert로 고정해 읽을 시간을 보장한다.
 
 ## 7. 디자인 시스템 적용
 
@@ -353,10 +317,9 @@ DESIGN.md의 값을 그대로 옮기고, 상태 전달에 필요한 최소한의
 ### 7.3 상태 시각 언어
 
 - Emerald 채움(`--primary`): 추천 후보 배지, `실행 승인` CTA, 완료 체크. 대응하는 글자색은 `--status-ok`.
-- Indigo(`--status-info`): 익명 세션, 스냅샷 가격 안내, 분석 결과의 불확실 항목, 판단 요청 알림.
+- Indigo(`--status-info`): 익명 세션, `DEMO_SNAPSHOT` 배지, 추정값 안내.
 - Amber(`--status-warn`): `OVER_BUDGET` 후보, `TERMINATING` 종료 확인 대기, 주의 안내.
 - Red(`--status-danger`): 실패, 파괴적 중단 확인, 오류 alert.
-- 위험도는 `LOW` → 무채색, `MEDIUM` → `--status-warn`, `HIGH` → `--status-danger`로 표시하되 색만으로 전달하지 않고 `level` 텍스트와 `reasons`를 항상 함께 적는다.
 - 색상과 함께 아이콘·상태 텍스트를 항상 제공한다. 색상만으로 후보 적합성이나 실행 결과를 표현하지 않는다.
 - 실행 추적 화면도 흰 캔버스를 유지한다. 진행 강조는 넓은 색 면적이 아니라 배지·hairline·단계 인디케이터로 만든다.
 
@@ -364,178 +327,146 @@ DESIGN.md의 값을 그대로 옮기고, 상태 전달에 필요한 최소한의
 
 ### 접근성
 
-- 모든 입력은 visible label을 가지며, 검증 오류와 helper는 `aria-describedby`로 연결한다.
-- 완료 조건 선택과 실행안 선택은 native radio group 또는 동등한 `radiogroup` 키보드 조작으로 구현한다. 선택 카드 전체가 44px 이상의 hit target을 가진다.
-- dialog(승인·중단·판단)는 focus trap, `Escape` 닫기(확정 전), 최초 focus, 닫힌 뒤 trigger focus 복귀를 보장한다.
-- 상태 갱신은 `aria-live="polite"`로 요약만 알린다. 폴링마다 긴 본문·focus를 바꾸지 않는다. `logTail` 갱신은 알리지 않는다.
-- 텍스트 대비는 WCAG AA 이상으로 검증한다. `--ink-mute-2`와 `--ink-faint`는 텍스트에 쓰지 않고, 상태색에는 아이콘·텍스트를 병기한다.
-- 마우스 hover에만 정보를 넣지 않는다. 위험도 이유, 예산 초과 사유, 추천 근거, 대체 후보는 항상 보인다.
-- Provider API 키 입력은 `type="password"`에 `autocomplete="off"`를 쓰고, 저장된 값을 다시 표시하지 않는다.
+- 모든 입력은 visible label을 가지며 예산 오류는 `aria-describedby`로 연결한다.
+- priority 선택 카드는 native radio group 또는 동등한 `radiogroup` 키보드 조작으로 구현한다. 카드 전체가 44px 이상의 hit target을 가진다.
+- dialog는 focus trap, `Escape` 닫기(실행·중단 확정 전), 최초 focus, 닫힌 뒤 trigger focus 복귀를 보장한다.
+- 상태 갱신은 `aria-live="polite"`로 요약만 알린다. 2.5초 polling마다 긴 본문·focus를 바꾸지 않는다.
+- 텍스트 대비는 WCAG AA 이상으로 검증한다. muted text를 작은 크기의 주요 정보에 사용하지 않고, green·orange·red에는 텍스트/아이콘을 병기한다.
+- 마우스 hover에만 정보를 넣지 않는다. 후보 선택 불가 사유와 추천 근거는 항상 보인다.
 
 ### 반응형
 
 | 구간 | 레이아웃 |
 | --- | --- |
-| ≥ 1024px | 12-column container. 학습 작업 요약/실행안 비교를 4:8로 분리하고 실행안 3개를 나란히 놓는다. |
-| 768–1023px | app shell은 유지하되 실행안을 2열로, 감시 화면을 단일 열로 전환한다. |
-| < 768px | header 축소, 폼·감시·결과 단일 열, 실행안은 세로 카드, 승인·중단 CTA는 sticky bottom bar로 고정한다. |
+| ≥ 1024px | 12-column container. 제약 요약/계약 비교를 4:8로 분리하고 후보는 table로 표시한다. |
+| 768–1023px | app shell은 유지하되 계약 영역을 단일 열로 전환한다. |
+| < 768px | header 축소, form/결과 단일 열, 후보는 카드, 승인·중단 CTA는 sticky bottom bar로 고정한다. |
 
-가로 스크롤에 의존하지 않는다. 모바일 실행안 카드에는 GPU·시간·총비용·예산 적합·위험도를 같은 순서로 놓아 비교 맥락을 유지한다.
+표는 화면 밖 가로 스크롤에 의존하지 않는다. 모바일 candidate card에는 GPU·시간·비용·예산 적합 여부를 같은 순서로 놓아 비교 맥락을 유지한다.
 
 ### 성능·안정성
 
-- 초기 bundle은 화면 단위 lazy loading과 icon tree-shaking으로 줄인다. 큰 asset을 추가하지 않는다.
-- 폴링 query는 terminal 상태에서 즉시 중단하고 component unmount 때 abort한다.
-- 화면에서 계산하는 값은 통화 format, 경과 시간, 상태 label뿐이다. 비용·추천·위험도를 재계산하지 않는다.
-- 모든 날짜는 UTC API 값을 `Asia/Seoul` 브라우저 locale로 표기하되, 서버 raw 값을 변형·저장하지 않는다.
+- 초기 bundle은 route 수준 lazy loading과 icon tree-shaking으로 줄인다. 화면에 이미지가 필요 없으므로 큰 asset을 추가하지 않는다.
+- polling query는 terminal 상태에서 즉시 중단하고 component unmount 때 abort한다.
+- 화면에서 계산하는 값은 통화 format, 시간 경과, 상태 label뿐이다. GPU 비용·추천을 재계산하지 않는다.
+- 모든 날짜는 UTC API 값을 `Asia/Seoul` 브라우저 locale로 표기하되, 서버 raw 값을 별도로 변형·저장하지 않는다.
 
 ## 9. 테스트 우선 구현 Loop
 
-프런트엔드는 기능 묶음이 아니라 **사용자가 관찰할 수 있는 한 행동씩** 구현한다. 각 Loop는 red → green 순서이며, red test 없이 구현을 먼저 시작하지 않는다. refactor는 green 이후 별도 code review 단계에서만 수행한다. 구현 세부사항·hook 내부 state·Query cache key·CSS class를 테스트하지 않고, 아래 공개 seam에서만 행동을 관찰한다.
+프런트엔드는 기능 묶음이 아니라 **사용자가 관찰할 수 있는 한 행동씩** 구현한다. 각 Loop는 red → green 순서이며, red test 없이 구현을 먼저 시작하지 않는다. refactor는 green 이후 별도 code review 단계에서만 수행한다. 구현 세부사항·hook 내부 state·Query cache key·CSS class를 테스트하지 않고, 아래의 공개 seam에서만 행동을 관찰한다.
 
 ### 9.1 사전 합의된 테스트 seam
 
 | Seam | 관찰하는 공개 행동 | 도구 | 테스트하지 않는 것 |
-| --- | --- | --- | --- |
-| 브라우저 UI | 사용자가 입력·선택·승인·중단·판단할 때 보이는 결과와 접근 가능한 control | Testing Library | 컴포넌트 state, hook 호출 순서 |
-| REST 경계 | `/session`, `/providers`, `/jobs`, `/approve`, `/cancel`, `/decisions` 요청과 명세 응답에 따른 화면 | MSW | fetch wrapper 내부, Query cache 구조 |
-| 시간 경계 | 상태별 폴링 간격, terminal 상태 중단, 표시용 경과 시간, 판단 만료 | fake timer + MSW | `setInterval` 또는 라이브러리 내부 timer |
-| 브라우저 저장소 | 새로고침 뒤 서버가 소유권을 허용한 Job만 복구, Provider 비밀값 미저장 | jsdom localStorage + MSW | storage helper의 private 함수 |
-| 배포 앱 | same-origin cookie, 실제 backend contract, mobile/desktop 흐름 | Playwright | DOM tree의 구체적 구조 |
+| --- | --- | --- |
+| 브라우저 UI | 사용자가 입력·선택·승인·중단할 때 보이는 결과와 접근 가능한 control | Testing Library | 컴포넌트의 state, 내부 hook 호출 순서 |
+| REST 경계 | `/session`, `/jobs`, `/jobs/{id}`, `/start`, `/cancel` 요청과 명세 응답에 따른 화면 | MSW | fetch wrapper 내부 구현, Query cache 구조 |
+| 시간 경계 | 2.5초 polling, terminal 상태 중단, 표시용 elapsed time | fake timer + MSW | `setInterval` 또는 라이브러리 내부 timer 구현 |
+| 브라우저 저장소 | 새로고침 뒤 서버가 소유권을 허용한 Job만 복구 | jsdom localStorage + MSW | localStorage helper의 private 함수 |
+| 배포 앱 | same-origin cookie, 실제 backend contract, mobile/desktop 사용자 흐름 | Playwright | DOM tree의 구체적 구조 |
 
-이 seam은 Frontend와 Backend 담당자가 구현 시작 전에 승인하는 테스트 계약이다. API field나 상태 전이 규칙이 바뀌면 fixture와 해당 seam test를 먼저 수정해 red를 만든 뒤 구현을 바꾼다.
+이 seam은 Frontend와 Backend 담당자가 구현 시작 전에 승인하는 테스트 계약이다. API field나 상태 전이 규칙이 바뀌면 fixture와 해당 seam test를 먼저 수정해 red 상태를 만든 뒤 구현을 바꾼다.
 
 ### 9.2 한 Loop의 고정 절차
 
 1. 이번 Loop의 표에서 **첫 번째 미구현 사용자 행동 하나**만 고른다.
-2. API-spec의 알려진 값 또는 fixture의 literal을 기대값으로 한 failing test를 작성하고 red를 확인한다.
+2. API-spec의 알려진 값 또는 fixture의 literal을 기대값으로 한 failing test를 작성하고 `npm run test:unit -- <test-file>`로 red를 확인한다.
 3. 해당 test를 통과시키는 최소 UI/API 코드를 작성한다. 미래 Loop의 화면·상태·추상화는 미리 만들지 않는다.
 4. 같은 Loop의 다음 행동도 1–3을 반복한다. 모든 행동이 green이면 `npm run typecheck && npm run test:unit && npm run test:integration`을 실행한다.
-5. green 뒤 mutation 확인을 한다. 그 Loop의 핵심 동작을 하나씩 망가뜨려 해당 test가 실제로 실패하는지 보고 복원한다.
-6. code review에서만 중복 제거·구조 정리를 수행하고 위 검증을 다시 통과시킨다. refactor 때문에 새 행동을 추가하지 않는다.
-7. Loop의 exit gate를 통과한 뒤에만 다음 Loop로 넘어간다. 실패한 테스트·skipped test·실제 Provider 호출은 다음 Loop로 넘기지 않는다.
+5. code review에서만 중복 제거·구조 정리를 수행하고, 위 검증 명령을 다시 통과시킨다. refactor 때문에 새 행동을 추가하지 않는다.
+6. Loop의 exit gate를 통과한 뒤에만 다음 Loop로 넘어간다. 실패한 테스트·skipped test·실제 Provider 호출은 다음 Loop로 넘기지 않는다.
 
 ### 9.3 Fixture와 Fake API 계약
 
-MSW fixture는 백엔드가 계산한 값을 대신하는 독립 명세 데이터다. 테스트가 UI 코드와 같은 방식으로 비용이나 추천을 계산해서는 안 된다. 모든 Job fixture는 [요구 계약 초안](frontend/docs/api-contract.md)의 `TrainingJob` 형식을 완전하게 만족한다.
+MSW fixture는 백엔드에서 계산한 값을 흉내 내는 독립적인 명세 데이터다. 테스트가 UI 코드와 같은 방식으로 비용이나 추천을 계산해서는 안 된다. 모든 Job fixture는 [API-spec.md](API-spec.md)의 `TrainingJob` 형식을 완전하게 만족하며, backend 담당자가 제공한 계약 fixture와 비교한다.
 
 ```text
 src/test/fixtures/
 ├─ session.json
-├─ providers/
-│  ├─ connected.json
-│  ├─ none-connected.json
-│  └─ invalid-credential.json
 ├─ jobs/
-│  ├─ analyzing.json
-│  ├─ analysis-failed.json
-│  ├─ plan-ready.json
-│  ├─ plan-ready-over-budget.json
+│  ├─ draft-cheapest.json
+│  ├─ draft-balanced.json
+│  ├─ draft-fastest.json
 │  ├─ provisioning.json
-│  ├─ preparing.json
 │  ├─ running.json
-│  ├─ running-no-progress.json
-│  ├─ awaiting-decision-replan.json
-│  ├─ terminating.json
+│  ├─ terminating-completed.json
 │  ├─ completed.json
 │  ├─ failed.json
-│  ├─ cancelled.json
-│  └─ budget-stopped.json
+│  └─ cancelled.json
 └─ errors/
    ├─ no-eligible-plan.json
-   ├─ no-provider-connected.json
-   ├─ plan-expired.json
-   ├─ concurrent-execution-limit.json
-   ├─ execution-limit-reached.json
+   ├─ demo-busy.json
+   ├─ execution-already-used.json
    ├─ session-expired.json
-   └─ provider-unavailable.json
+   └─ runpod-unavailable.json
 ```
 
-- `createFakeApi()`는 위 fixture를 반환하는 stateful MSW handler로 만든다. 상태 전이는 REST 응답으로만 노출한다.
-- UI test는 fixture의 `reason`, `cost.estimatedTotalKrw`, `risk.level`, `resourceTeardown.status` 같은 API literal을 검증한다. 클라이언트가 계산한 값을 기대값으로 재사용하지 않는다.
-- fixture ID는 문서·테스트 전용이며 production API key, Provider resource ID, Pod ID를 포함하지 않는다.
-- backend의 OpenAPI schema가 준비되면 fixture를 그 schema에 검증하는 `test:contract`를 추가한다. contract mismatch는 UI 변경으로 덮지 않고 API 계약을 먼저 해결한다.
+- `createFakeMvpApi()`는 위 fixture를 반환하는 stateful MSW handler로 만든다. `start` 뒤에는 `PROVISIONING`, 이후 `RUNNING`, completion 뒤에는 `TERMINATING → COMPLETED`를 REST 응답으로만 노출한다.
+- UI test는 fixture의 `recommended.reason`, `estimatedGpuCostKrw`, `eligibility`, `podTerminatedAt` 같은 API literal을 검증한다. 클라이언트가 계산한 추천 결과를 기대값으로 재사용하지 않는다.
+- fixture의 ID는 문서·테스트 전용 값이며 production API key, Runpod GPU type ID, Pod ID를 포함하지 않는다.
+- backend의 Pydantic/OpenAPI schema가 준비되면, fixture를 그 schema에 검증하는 별도 `test:contract` 명령을 추가한다. contract mismatch는 UI 변경으로 덮지 않고 API 계약을 먼저 해결한다.
 
 ### 9.4 구현 Loop와 exit gate
 
-일반 개발·CI에서는 MSW/Fake backend만 사용한다. 실제 Provider 호출은 Loop 8의 명시적 수동 smoke test에서만 허용한다.
+백엔드 계획의 Loop와 같은 세로 흐름으로 진행한다. 일반 개발·CI에서는 MSW/Fake backend만 사용하며, 실제 Runpod 호출은 Loop 5의 명시적 수동 smoke test에서만 허용한다.
 
 | Loop | Red → Green 사용자 행동 | 이번 Loop에서 작성할 테스트 | 최소 구현 범위 | Exit gate / 다음 Loop 전 금지 범위 |
 | --- | --- | --- | --- | --- |
-| 0. 골격·세션 ✅ | 앱을 열면 익명 세션이 준비되고 접근 가능한 빈 폼을 본다. | `creates_an_anonymous_session_before_enabling_submission`, `renders_accessible_empty_form`, `never_labels_the_product_stage_or_run_type` | Vite/TS, DESIGN.md 토큰, app shell, API client, `POST /session`, MSW 하네스 | typecheck·unit green. **완료.** 폼 내용은 Loop 2에서 교체한다. |
-| 1. 공급자 연결 | 연결된 공급자와 그 상태를 보고, 연결하거나 해제한다. 연결이 없으면 왜 제출할 수 없는지 안다. | `lists_providers_with_connection_status`, `does_not_persist_provider_secret_anywhere`, `blocks_workload_submission_without_connected_provider`, `shows_next_action_for_invalid_credential` | `getProviders`, `ProviderConnection`, 연결/해제 mutation, `NO_PROVIDER_CONNECTED` presenter | unit/integration green. Job 생성·분석은 구현하지 않는다. |
-| 2. 학습 작업·분석 | 학습 작업을 제출하면 Agent가 분석 중임을 보고, 분석 결과와 확신하지 못한 항목을 확인한다. | `submits_workload_and_enters_analyzing`, `polls_analysis_every_two_seconds`, `renders_server_analysis_with_unknowns`, `keeps_input_after_analysis_failed` | `WorkloadForm` + Zod, `createJob`, ANALYZING 폴링, `AnalysisPanel` | unit/integration green. 실행안 비교·승인은 구현하지 않는다. |
-| 3. 실행안 비교 | 실행안 3개의 총비용 분해·시간·위험도·대체 후보를 비교하고, 예산 초과 안은 보이되 선택할 수 없다. | `renders_three_plans_in_server_order`, `shows_total_cost_breakdown_from_server`, `keeps_over_budget_plan_visible_but_unselectable`, `shows_risk_reasons_without_hover`, `shows_snapshot_price_age` | `PlanComparison`, `PlanCard`, `CostBreakdown`, `RiskBadge`, `AlternativeList` | unit/integration green. 승인 요청은 보내지 않는다. |
-| 4. 계약 승인 | 명시적 확인 전에는 승인 요청을 보내지 않고, 계약 내용을 확인한 뒤 한 번만 승인한다. 가격이 바뀌면 새 실행안을 본다. | `does_not_approve_before_confirmation`, `approves_selected_plan_exactly_once`, `shows_contract_and_auto_stop_in_dialog`, `replaces_plans_after_plan_expired`, `shows_concurrent_limit_without_losing_selection` | `ContractApproval`, `ApprovalDialog`, `approveJob`, `PLAN_EXPIRED` 처리 | `approve`가 `202`인 fixture에서 감시 화면 진입까지 green. 폴링·중단은 구현하지 않는다. |
-| 5. 실행 감시·중단 | 진행 중 Job의 단계·경과·누적 비용·진행률을 보고 중단할 수 있으며, 종료 확인 전 최종 결과를 보지 않는다. | `polls_only_while_job_is_non_terminal`, `renders_execution_steps_in_server_order`, `labels_estimated_cost_as_not_metered`, `omits_progress_bar_when_progress_is_null`, `does_not_show_final_result_while_terminating`, `cancel_waits_for_server_confirmed_status` | `getJob` 폴링, `StepTimeline`, `CostMeter`, `LogTail`, cancel dialog | fake timer 포함 unit/integration green. 판단 요청·결과 화면은 구현하지 않는다. |
-| 6. 판단 요청 | 판단이 필요할 때만 제안을 보고, 증분 비용·시간을 확인한 뒤 승인하거나 여기서 중단한다. | `shows_decision_panel_only_when_pending_decision_exists`, `shows_incremental_cost_and_time_delta`, `approves_decision_once_after_confirmation`, `stops_execution_when_user_declines`, `handles_expired_decision` | `DecisionPanel`, `DecisionDialog`, `resolveDecision`, 만료 처리 | unit/integration green. 결과 화면은 구현하지 않는다. |
-| 7. 결과·복구 | 결과와 artifact·실제 비용·자원 종료 확인을 보고, 새로고침 후 소유한 Job만 복구하며 세션 만료는 정리한다. | `shows_outcome_with_actual_cost_and_teardown`, `marks_unconfirmed_teardown_separately`, `never_presents_estimate_as_actual_cost`, `shows_safe_failure_message_without_provider_secrets`, `lists_artifacts_and_preserved_checkpoints`, `restores_owned_job_after_reload`, `clears_saved_job_after_session_expired`, `backs_off_after_transient_polling_failures` | `ResultPanel`, `ArtifactList`, `TeardownStatus`, localStorage 복구, 폴링 backoff | unit/integration/E2E(Fake backend) green. CI가 실제 backend나 Provider를 호출하지 않는다. |
-| 8. 실제 통합·리허설 | 배포된 사용자가 same-origin 세션으로 성공·예산 미달·중단 흐름을 완주한다. | `e2e_successful_execution_flow`, `e2e_no_eligible_plan`, `e2e_cancelled_execution_flow`, `e2e_plan_expired_reapproval`, `e2e_mobile_plan_review` | production API base URL, reverse proxy/CORS, Playwright, visual QA, 실제 backend 연동 | Fake backend E2E와 실제 backend의 non-Provider integration green 후, 승인된 1회 Provider smoke test를 별도 실행한다. smoke는 CI·일반 test script에서 절대 호출하지 않는다. |
+| 0. 골격·계약 | 사용자가 앱을 열면 익명 session이 준비되고 접근 가능한 빈 제약 폼을 본다. | `creates_an_anonymous_session_before_enabling_constraint_submission`, `renders_accessible_empty_constraint_form` | Vite/TS, token, app shell, API client, `POST /session`, MSW/fixture, test commands | typecheck·unit green. Job 생성·승인·polling UI는 아직 만들지 않는다. |
+| 1. 제약·추천 계약 | 유효한 예산·우선순위 제출 시 서버가 준 불변 계약을 보고, 예산 미달이면 입력을 유지한 채 조정한다. | `submits_only_budget_and_priority_and_renders_server_recommended_plan`, `keeps_over_budget_candidates_visible_but_unselectable`, `keeps_constraints_after_no_eligible_plan` | `ConstraintForm`, validation, `createJob`, `ExecutionPlanReview`, candidate comparison, disclaimer | unit/integration green. GPU override, start request, cancel, polling을 구현하지 않는다. |
+| 2. 승인 | 사용자는 명시적으로 확인하기 전에는 실행 요청을 보내지 않으며, 한 번의 승인만 start 요청을 보낸다. | `does_not_start_before_approval_confirmation`, `starts_once_after_confirming_execution_contract`, `shows_demo_busy_without_changing_the_contract`, `shows_execution_limit_message` | approval dialog, `startJob`, pending CTA lock, start error presenter | `start`가 `202`인 fixture에서 tracking 진입까지 green. 상태 polling·cancel은 구현하지 않는다. |
+| 3. 실행 추적·중단 | 진행 중 Job은 polling하고, 사용자는 중단을 요청할 수 있지만 서버의 종료 확인 전 final 결과를 보지 않는다. | `polls_only_while_job_is_non_terminal`, `renders_provisioning_running_and_terminating_in_order`, `does_not_show_final_result_while_terminating`, `cancel_waits_for_server_confirmed_cancelled_status` | `getJob`, 2.5초 polling, status timeline, elapsed time, cancel dialog/mutation | fake timer를 포함한 unit/integration green. 실제 Runpod·실제 timeout·새로고침 복구는 구현하지 않는다. |
+| 4. 최종 결과·복구 | 완료/실패/중단 결과를 안전하게 보고, 새로고침 후 소유한 Job만 복구하며 세션 만료는 정리한다. | `shows_completion_log_exit_code_and_confirmed_termination`, `shows_safe_failure_message_without_provider_secrets`, `restores_active_job_after_reload_when_session_owns_it`, `clears_saved_job_after_session_expired_or_job_not_found`, `backs_off_after_transient_polling_failures` | `JobResult`, localStorage recovery, session/error reset, polling backoff | unit/integration/E2E(Fake backend) green. CI가 실제 backend나 Runpod를 호출하지 않는다. |
+| 5. 실제 통합·리허설 | 배포된 사용자가 same-origin session으로 성공·예산 미달·취소 흐름을 완주한다. | `e2e_successful_execution_flow`, `e2e_no_eligible_plan`, `e2e_cancelled_execution_flow`, `e2e_mobile_contract_review` | production API base URL, reverse proxy/CORS, Playwright, visual QA, 실제 backend 연동 | Fake backend E2E와 실제 backend의 non-Runpod integration green 후, 승인된 1회 Runpod smoke test를 별도 실행한다. smoke는 CI·일반 test script에서 절대 호출하지 않는다. |
 
 ## 10. 테스트 실행 체계
 
 ### 필수 script
 
-Loop 종료 시 명령의 일부만 선택 실행하지 않고 해당 gate의 전체 명령을 실행한다.
+`package.json`에는 아래 script를 만든다. Loop 종료 시 명령의 일부만 선택 실행하지 않고, 해당 gate의 전체 명령을 실행한다.
 
 | Script | 대상 | 실제 Provider 호출 |
 | --- | --- | --- |
 | `npm run typecheck` | TypeScript 및 API DTO | 없음 |
 | `npm run test:unit` | formatter, presenter, UI component, fake timer | 없음 |
 | `npm run test:integration` | MSW REST handler와 화면의 세로 흐름 | 없음 |
-| `npm run test:contract` | fixture와 backend OpenAPI schema | 없음 |
+| `npm run test:contract` | fixture와 backend OpenAPI/Pydantic schema | 없음 |
 | `npm run test:e2e:fake` | Playwright + Fake backend | 없음 |
-| `npm run test:e2e:backend` | Playwright + staging backend/Fake Provider | 없음 |
+| `npm run test:e2e:backend` | Playwright + 배포 staging backend/Fake Provider | 없음 |
 | `npm run test:visual` | 375px/768px/1440px screenshot 비교 | 없음 |
-| `npm run smoke:provider` | 승인된 staging 환경의 한 시나리오 | **명시적 수동 실행만** |
+| `npm run smoke:runpod` | 승인된 staging 환경의 한 선택 시나리오 | **명시적 수동 실행만** |
 
-`smoke:provider`는 일반 `test`, CI, pre-commit script에 포함하지 않는다. `RUN_REAL_PROVIDER_SMOKE=true`가 없으면 즉시 종료하게 만들어 우발적인 비용 발생을 막는다. 실행 전 활성 Job이 없는지 확인하고, 실행 뒤 어떤 결과든 `resourceTeardown.status`를 확인한다.
+`smoke:runpod`은 일반 `test`, CI, pre-commit script에 포함하지 않는다. 명령은 `RUN_REAL_RUNPOD_SMOKE=true`가 없으면 즉시 종료하게 만들어 우발적인 비용 발생을 막는다. smoke 실행 전에는 backend의 전역 활성 Job이 없는지 확인하고, 실행 뒤에는 `COMPLETED`/`CANCELLED`/`FAILED` 어느 결과든 `podTerminatedAt`을 확인한다.
 
 ### 계층별 책임
 
 | 계층 | 대상 | 반드시 확인할 행동 |
 | --- | --- | --- |
-| Unit | money/time formatter, status presenter, error normalizer, poll predicate | `TERMINATING`은 final이 아니며, `actualTotalKrw`가 `null`이면 추정값을 실제 비용으로 쓰지 않는다. |
-| Component | 학습 작업 폼, 실행안 카드, 승인/중단/판단 dialog, 공급자 연결 | 유효성·키보드 조작·disabled·예산 초과·위험도 표시가 정확하다. |
-| API integration (MSW) | session, providers, job create/get/approve/cancel/decision client | `credentials: include`, API DTO, HTTP/code별 error mapping이 정확하다. |
-| Flow integration | fake 상태 전이 | 입력 → 분석 → 비교 → 승인 → 감시 → 판단 → 결과가 REST 응답에 따라 이어진다. |
-| E2E | Fake backend, 이후 staging backend | 성공, `NO_ELIGIBLE_PLAN`, `PLAN_EXPIRED`, 중단, 새로고침 복구, mobile viewport를 검증한다. |
-| Visual QA | 375px / 768px / 1440px | CTA green의 절제, 정보 밀도, 대비·overflow·sticky bar를 확인한다. |
+| Unit | money/time formatter, status presenter, error normalizer, poll predicate | `TERMINATING`은 final이 아니며 `podTerminatedAt`이 있어야 종료 완료 문구를 낸다. |
+| Component | 예산 폼, priority radio cards, 후보 비교, approval/cancel dialog | 유효성·키보드 조작·disabled·예산 초과 표시가 정확하다. |
+| API integration (MSW) | session, create/get/start/cancel client | `credentials: include`, API DTO, HTTP/code별 error mapping이 정확하다. |
+| Flow integration | fake 상태 전이 | contract 생성 → 승인 → polling → 완료/실패/중단 화면이 REST 응답에 따라 이어진다. |
+| E2E | Fake backend, 이후 staging backend/Fake Provider | 성공, `NO_ELIGIBLE_PLAN`, `DEMO_BUSY`, cancel, 새로고침 복구, mobile viewport를 검증한다. |
+| Visual QA | 375px / 768px / 1440px | CTA green의 절제, information density, 대비·overflow·sticky bar를 확인한다. |
 
-테스트는 public seam의 결과만 assert한다. API 요청 수 검증은 비용 발생 요청이 명시적 확인 전 절대 나가지 않는지처럼 사용자 행동을 보장할 때만 쓴다. private hook 호출, Query cache key, component tree, CSS class명에 대한 assertion은 금지한다.
+테스트는 public seam의 결과만 assert한다. API 요청 수 검증은 비용 발생 요청이 명시적 확인 전 절대 나가지 않는지처럼 사용자 행동을 보장할 때만 사용한다. private hook 호출, TanStack Query cache key, component tree, CSS class명에 대한 assertion은 금지한다.
 
 ## 11. 백엔드 연동 확인 사항과 완료 조건
 
-이 계획이 전제하는 API는 프런트엔드가 [PRD-final.md](PRD-final.md)에서 도출한 [요구 계약 초안](frontend/docs/api-contract.md)이며, 아직 합의된 계약이 아니다. 저장소 루트의 [API-spec.md](API-spec.md)는 백엔드 소유 문서이므로 프런트엔드가 고치지 않는다. 아래를 백엔드 담당자와 합의한 뒤에만 `API-spec.md`에 반영한다.
+프런트엔드 작업 시작 전 백엔드와 다음을 합의·확인한다.
 
-1. 기본 배포를 same-origin reverse proxy로 구성한다. 분리 origin이 불가피하면 CORS allowlist와 `allow_credentials`를 설정하고, 두 origin이 `SameSite=Lax` cookie가 전송되는 same-site 관계인지 확인한다.
-2. `TrainingJob`의 모든 nullable field와 상태별 `analysis`·`plans`·`contract`·`execution`·`pendingDecision`·`result` 채움 규칙을 fixture로 고정한다.
-3. mutation이 error를 반환했을 때 Job의 최종 서버 상태를 `GET`으로 확인할 수 있게 한다. UI는 mutation 응답만으로 상태를 추정하지 않는다.
-4. `PLAN_EXPIRED` 응답이 갱신된 `plans`를 `details`에 포함하는지 확인한다.
-5. `failureMessage`와 `risk.reasons`가 사용자에게 안전한 짧은 문구인지 확인한다.
-6. API response와 서버 로그 어디에도 Provider API key, GPU type ID, 이미지 태그, callback URL, Pod ID가 나오지 않는지 함께 점검한다.
+1. 기본 배포를 same-origin reverse proxy로 구성한다. 분리 origin이 불가피하면 CORS allowlist·credential header를 설정하고, 두 origin이 `SameSite=Lax` cookie가 전송되는 same-site 관계인지 확인한다.
+2. `TrainingJob` 응답의 모든 nullable field와 상태별 `startedAt`·`finishedAt`·`podTerminatedAt` 채움 규칙을 fixture로 고정한다.
+3. `POST /start` 또는 `POST /cancel`이 error를 반환했을 때 Job의 최종 서버 상태를 `GET`으로 확인할 수 있게 한다. UI는 mutation 응답만으로 상태를 추정하지 않는다.
+4. `TERMINATING` 장기 지속·Runpod 상태 확인 실패 시 `failureMessage`가 사용자에게 안전한 짧은 문구인지 확인한다.
+5. API response와 서버 로그 어디에도 Runpod API key, GPU type ID, image, callback URL, Pod ID가 나오지 않는지 함께 점검한다.
 
-### 기존 backend와의 차이
+다음이 충족되면 프런트엔드 MVP를 완료로 본다.
 
-`backend` 브랜치의 `ai-training-cost-optimizer`는 workload 분석, 후보 비교, GPU 사용료·Agent 수수료·총비용, 예산 부족액을 이미 계산한다. 다음이 추가로 필요하다.
-
-- `/api/v1` prefix와 camelCase 직렬화, credential CORS
-- 익명 세션과 Job 소유권
-- `executionCommand`, `completionCriteria`, `maxRuntimeMinutes` 입력
-- 실행안 3종(`CHEAPEST`/`FASTEST`/`BALANCED`)과 `risk`, `alternatives`, `environment`
-- 승인 → 환경 생성 → 준비 → 실행 → 종료 확인의 HTTP 노출 (`jobs.py`·`execution.py`의 로직은 있으나 endpoint가 없다)
-- 판단 요청(`pendingDecision`)과 응답 endpoint
-- artifact 목록과 서명 URL 발급
-- `resourceTeardown` 확인 상태
-
-### 완료 조건
-
-1. 사용자는 Repository·실행 명령·완료 조건·예산·최대 실행시간만 입력해 Agent의 분석 결과와 실행안 3개를 볼 수 있다.
-2. 실행안은 시간당 단가가 아니라 총비용으로 비교되고, 위험도와 대체 후보가 비용과 분리돼 표시된다.
-3. 추천 실행안은 읽기 전용이며, GPU 수동 선택·Provider 콘솔·SSH·CUDA 설정 UI가 없다.
-4. 비용 발생 가능성을 설명한 뒤 명시적 승인으로만 실행 요청을 보내고, 승인 직전 가격 변경은 새 실행안으로 다시 승인받는다.
-5. 실행 중 단계·경과 시간·누적 비용·진행률이 상태별 폴링으로 정확히 표시되며, 자원 종료 확인 전에는 최종 결과를 표시하지 않는다.
-6. 재계획·계속 투자 판단이 필요할 때만 사용자에게 증분 비용·시간과 함께 제시되고, 승인 또는 중단을 선택할 수 있다.
-7. 결과 화면에 artifact, 실행 시간, 추정/실제 비용, 자원 종료 확인이 보이고, 확인되지 않은 종료는 성공으로 표시되지 않는다.
-8. 공급자 미연결, 예산 미달, 가격 변경, 동시 실행 제한, 실행 횟수 제한, 세션 만료, 공급자 불가 상태가 다음 행동과 함께 이해 가능한 한국어로 안내된다.
-9. 375px부터 desktop까지 핵심 흐름이 동작하고, 키보드·스크린리더·명도 대비 기준을 만족한다.
+1. 사용자는 예산과 우선순위만 입력해 2개 이상 GPU 후보의 시간·비용 비교와 Agent 추천 근거를 볼 수 있다.
+2. 추천 실행 계약은 읽기 전용이며, GPU 수동 선택·Provider 콘솔·SSH·CUDA 설정 UI가 없다.
+3. 비용 발생 가능성을 설명한 뒤 명시적 승인으로만 start 요청을 보낸다.
+4. `PROVISIONING`, `RUNNING`, `TERMINATING`, 최종 상태를 2~3초 polling으로 정확히 표시하며, Pod 종료 확인 전 성공·실패·중단 완료를 표시하지 않는다.
+5. 성공 화면에는 완료 로그·종료 코드·실행 시간·선택 GPU·Pod 자동 종료 완료가, 실패/중단 화면에는 안전한 원인·종료 결과가 보인다.
+6. 예산 미달, 다른 실행 진행 중, 브라우저당 실행 1회 제한, 세션 만료, Provider 불가 상태가 다음 행동과 함께 이해 가능한 한국어로 안내된다.
+7. 375px부터 desktop까지 핵심 흐름이 동작하고, 키보드·스크린리더·명도 대비 기준을 만족한다.
