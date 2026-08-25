@@ -1,0 +1,104 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: var(--canvas);
+}
+
+.header {
+  border-bottom: 1px solid var(--hairline-cool);
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-lg) var(--space-xl);
+}
+
+.wordmark {
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+.scopeBadge {
+  background: var(--canvas-soft);
+  border: 1px solid var(--hairline-cool);
+  border-radius: var(--radius-full);
+  color: var(--ink-mute);
+  font-size: 12px;
+  line-height: 1.45;
+  padding: var(--space-xxs) var(--space-sm);
+}
+
+.sessionStatus {
+  align-items: center;
+  display: flex;
+  gap: var(--space-sm);
+  font-size: 13px;
+  margin-left: auto;
+}
+
+.statusDot {
+  border-radius: var(--radius-full);
+  height: 8px;
+  width: 8px;
+  flex: none;
+}
+
+.statusReady {
+  background: var(--primary);
+}
+
+.statusPending {
+  background: var(--ink-mute-2);
+}
+
+.statusFailed {
+  background: var(--status-danger);
+}
+
+.sessionReady {
+  color: var(--ink-mute);
+}
+
+.sessionFailed {
+  color: var(--status-danger);
+}
+
+.main {
+  margin: 0 auto;
+  max-width: 1180px;
+  padding: 48px var(--space-xl) var(--space-huge);
+  width: 100%;
+}
+
+.pageTitle {
+  font-size: 36px;
+  font-weight: 500;
+  letter-spacing: -0.72px;
+  line-height: 1.15;
+}
+
+.pageLead {
+  color: var(--ink-mute);
+  margin-top: var(--space-md);
+  max-width: 60ch;
+}
+
+.content {
+  margin-top: var(--space-xxl);
+}
+
+@media (max-width: 767px) {
+  .main {
+    padding: var(--space-xxl) var(--space-lg) var(--space-huge);
+  }
+
+  .pageTitle {
+    font-size: 28px;
+    letter-spacing: -0.42px;
+  }
+
+  .scopeBadge {
+    display: none;
+  }
+}

@@ -203,61 +203,98 @@ status ∈ {COMPLETED, FAILED, CANCELLED}
 
 ## 7. 디자인 시스템 적용
 
-### 7.1 결합 원칙
+### 7.1 단일 기준
 
-두 레퍼런스의 충돌을 무분별하게 섞지 않고 역할을 분리한다.
+디자인 기준 문서는 [DESIGN.md](DESIGN.md) 하나다. 흰 캔버스(`#ffffff`), 단일 emerald `#3ecf8e`, 6px 버튼 radius, near-black `#171717` 본문이 제품 기본이며, 다크 표면은 로그·코드 블록에만 쓴다. 이전 판이 참조하던 다크 운영 화면 토큰과 pill 버튼 규칙은 폐기한다.
 
-| 역할 | Spotify에서 적용 | Supabase에서 적용 |
-| --- | --- | --- |
-| 제품 분위기 | near-black 작업 공간, 몰입형 진행 화면, 강한 상태 대비 | — |
-| 정보 밀도 | compact status row와 단계 진행 | 계약 카드, 비교 표, form의 명료한 정보 구조 |
-| 주요 행동 | 승인·중단 confirmation의 강한 초점, 둥근 primary action | 6px 반경의 기술적 form·표·inline action |
-| 브랜드 색 | 녹색은 오직 활성 상태와 비용 발생 CTA에 사용 | 단일 emerald의 절제된 사용과 짙은 글자색 |
-| 개발자 맥락 | — | mono로 log, exit code, 고정 명령을 표현 |
-
-제품 기본은 **Spotify식 다크 운영 화면**으로 잡되, 카드·표·입력의 구조는 Supabase식으로 단정하게 만든다. 두 문서가 각각 요구하는 단일 강조색 원칙을 지키기 위해 실 구현에는 하나의 emerald `#3ECF8E`만 사용한다. 이는 Supabase primary를 기준으로 하되, Spotify의 기능적 green 역할(활성·승인·진행)에만 배치한다. 다른 장식색·그라디언트·사진은 사용하지 않는다.
+| 원칙 | 이 제품에서의 적용 |
+| --- | --- |
+| 흰 캔버스 유지 | 앱 전체가 `#ffffff` / `#fafafa` 위에 놓인다. 실행 추적 화면도 다크로 반전하지 않는다. |
+| emerald는 유일한 색 사건 | 추천 후보, 승인 CTA, 완료 상태에만 쓴다. 화면당 filled green은 하나를 원칙으로 한다. |
+| green 위 글자는 near-black | `#3ecf8e` 위 흰 글자는 2.00:1로 읽을 수 없고 `#171717`은 8.98:1이다. 버튼 글자는 항상 near-black이다. |
+| 6px 기술적 radius | 버튼·입력·표는 6px, 카드 12px, dialog 16px. pill은 상태 tag에만 쓰고 버튼에는 쓰지 않는다. |
+| 다크는 코드에만 | `completionLog`, `exitCode`, 고정 실행 명령만 `#1c1c1c` code block에 mono로 넣는다. |
+| 장식 금지 | 그라디언트·사진·일러스트·장식 accent 색을 쓰지 않는다. 정보 밀도가 화면의 유일한 시각 재료다. |
 
 ### 7.2 토큰
 
+DESIGN.md의 값을 그대로 옮기고, 상태 전달에 필요한 최소한의 semantic 토큰만 파생시킨다.
+
 ```css
 :root {
-  --canvas: #121212;
-  --surface: #181818;
-  --surface-raised: #1f1f1f;
-  --surface-code: #1c1c1c;
-  --text: #ffffff;
-  --text-muted: #b3b3b3;
-  --text-faint: #9a9a9a;
-  --hairline-dark: #4d4d4d;
-  --hairline-light: #dfdfdf;
+  /* Brand — DESIGN.md */
   --primary: #3ecf8e;
-  --primary-pressed: #24b47e;
+  --primary-deep: #24b47e;
   --on-primary: #171717;
-  --info: #539df5;
-  --warning: #ffa42b;
-  --danger: #f3727f;
-  --radius-control: 6px;
-  --radius-card: 12px;
-  --radius-pill: 9999px;
-  --shadow-float: 0 8px 24px rgba(0, 0, 0, .5);
-  --font-sans: Inter, Pretendard, "Noto Sans KR", system-ui, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Surface — DESIGN.md */
+  --canvas: #ffffff;
+  --canvas-soft: #fafafa;
+  --canvas-night: #1c1c1c;
+  --canvas-night-soft: #202020;
+
+  /* Text — DESIGN.md */
+  --ink: #171717;
+  --ink-secondary: #212121;
+  --ink-mute: #707070;      /* 4.95:1 — 보조 텍스트까지 허용 */
+  --ink-mute-2: #9a9a9a;    /* 2.81:1 — 텍스트 금지, 아이콘·구분선 전용 */
+  --ink-faint: #b2b2b2;     /* placeholder·disabled 전용 */
+  --on-dark: #ffffff;
+
+  /* Hairline — DESIGN.md */
+  --hairline: #dfdfdf;
+  --hairline-strong: #c7c7c7;
+  --hairline-cool: #ededed;
+
+  /* Status — DESIGN.md accent에서 AA 대비로 파생 */
+  --status-ok: #0f7350;      /* 5.85:1 — 추천·정상 실행·완료 텍스트 */
+  --status-info: #054cff;    /* 6.03:1 — accent-indigo 원본 */
+  --status-warn: #9a5b00;    /* 5.43:1 — accent-yellow 파생 */
+  --status-danger: #c81b01;  /* 5.81:1 — accent-tomato 파생 */
+
+  /* Shape — DESIGN.md rounded */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* Spacing — DESIGN.md spacing */
+  --space-xxs: 2px;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-xxl: 32px;
+  --space-huge: 64px;
+
+  /* Elevation — DESIGN.md */
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, .06);
+  --shadow-2: 0 8px 24px rgba(0, 0, 0, .08);
+  --shadow-3: 0 16px 48px rgba(0, 0, 0, .12);
+
+  /* Type — Circular은 상용이므로 Inter로 대체 */
+  --font-sans: Inter, Pretendard, "Noto Sans KR", system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
 ```
 
-- 배경은 `#121212`, 기본 카드 `#181818`, 상호작용 surface `#1f1f1f`로 깊이를 만든다. 카드에는 과도한 테두리 대신 미세한 hairline 또는 dark shadow를 사용한다.
-- CTA green 위 텍스트는 흰색이 아닌 `#171717`을 사용한다. 화면당 filled green CTA는 하나를 원칙으로 한다.
-- body는 16px/1.5/400, section title은 24px/700, page display는 36px/500과 약한 negative tracking을 쓴다. 코드·로그·exit code만 mono를 쓴다.
-- form·table·compact action은 Supabase의 6px, 카드·dialog는 12–16px을 쓴다. 비용 발생 `실행 승인` CTA와 상태 badge만 Spotify의 full pill을 사용한다. 모든 버튼을 pill로 만들지 않는다.
-- 로그·세부 원인 영역은 `#1c1c1c` code block으로 처리한다. 장식용 album art나 색상 그래프는 사용하지 않는다.
+- 상태 토큰 4개는 DESIGN.md accent를 흰 배경 대비 4.5:1 이상이 되도록 어둡게 파생한 값이다. 원본 accent는 본문 텍스트 대비를 만족하지 못한다(`#ff2201` 3.83:1, `#ffdb13` 1.36:1). DESIGN.md가 금지한 장식용 accent가 아니라 **상태 전달 전용**이며, 버튼 배경이나 섹션 배경으로 쓰지 않는다.
+- `--primary`는 2.00:1이라 텍스트 색이 될 수 없다. 채움(배지·CTA 배경·체크 아이콘)에만 쓰고, 녹색 의미의 글자는 `--status-ok`를 쓴다.
+- `--ink-mute-2`와 `--ink-faint`는 텍스트에 쓰지 않는다. 후보 비교표의 보조 정보는 `--ink-mute`까지만 내린다.
+- 타이포는 display 36px/500/-0.72px, 카드 제목 28px/500/-0.42px, 섹션 18px/500, body 16px/1.5/400, 버튼 14px/500, caption 13px, micro 12px을 쓴다. display weight는 500을 넘기지 않는다.
+- 카드는 1px `--hairline` 테두리와 `--shadow-1`, 떠 있는 dialog는 `--shadow-3`을 쓴다.
 
 ### 7.3 상태 시각 언어
 
-- Green: 추천됨, 정상 실행 중, 완료됨, primary approval.
-- Blue: 세션·데모 스냅샷·정보 안내.
-- Orange: 예산 초과 후보, 종료 확인 대기, 주의 안내.
-- Red: 실패, 파괴적 중단 확인, 오류 alert.
+- Emerald 채움(`--primary`): 추천 후보 배지, `실행 승인` CTA, 완료 체크. 대응하는 글자색은 `--status-ok`.
+- Indigo(`--status-info`): 익명 데모 세션, `DEMO_SNAPSHOT` 배지, 추정값 안내.
+- Amber(`--status-warn`): `OVER_BUDGET` 후보, `TERMINATING` 종료 확인 대기, 주의 안내.
+- Red(`--status-danger`): 실패, 파괴적 중단 확인, 오류 alert.
 - 색상과 함께 아이콘·상태 텍스트를 항상 제공한다. 색상만으로 후보 적합성이나 실행 결과를 표현하지 않는다.
+- 실행 추적 화면도 흰 캔버스를 유지한다. 진행 강조는 넓은 색 면적이 아니라 배지·hairline·단계 인디케이터로 만든다.
 
 ## 8. 접근성·반응형·성능 기준
 
@@ -383,7 +420,7 @@ src/test/fixtures/
 | API integration (MSW) | session, create/get/start/cancel client | `credentials: include`, API DTO, HTTP/code별 error mapping이 정확하다. |
 | Flow integration | fake 상태 전이 | contract 생성 → 승인 → polling → 완료/실패/중단 화면이 REST 응답에 따라 이어진다. |
 | E2E | Fake backend, 이후 staging backend/Fake Provider | 성공, `NO_ELIGIBLE_PLAN`, `DEMO_BUSY`, cancel, 새로고침 복구, mobile viewport를 검증한다. |
-| Visual QA | 375px / 768px / 1440px, dark mode | CTA green의 절제, information density, 대비·overflow·sticky bar를 확인한다. |
+| Visual QA | 375px / 768px / 1440px | CTA green의 절제, information density, 대비·overflow·sticky bar를 확인한다. |
 
 테스트는 public seam의 결과만 assert한다. API 요청 수 검증은 비용 발생 요청이 명시적 확인 전 절대 나가지 않는지처럼 사용자 행동을 보장할 때만 사용한다. private hook 호출, TanStack Query cache key, component tree, CSS class명에 대한 assertion은 금지한다.
 
