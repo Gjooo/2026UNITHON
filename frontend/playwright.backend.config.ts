@@ -1,7 +1,13 @@
 import { defineConfig, devices } from '@playwright/test'
 
 const PREVIEW_PORT = 4176
-const baseURL = `http://localhost:${PREVIEW_PORT}`
+
+/**
+ * E2E_BASE_URL을 주면 이미 배포된 주소를 그대로 친다(빌드·preview 없음).
+ * 없으면 로컬에서 빌드본을 띄우고 E2E_API_TARGET으로 프록시한다.
+ */
+const deployed = process.env.E2E_BASE_URL
+const baseURL = deployed ?? `http://localhost:${PREVIEW_PORT}`
 
 /**
  * 배포된 staging backend(또는 로컬 fake provider 모드)에 붙여 리허설한다.
@@ -18,15 +24,17 @@ export default defineConfig({
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
   ],
-  webServer: [
-    {
-      command: `npm run build && npm run preview -- --port ${PREVIEW_PORT} --strictPort`,
-      env: {
-        VITE_DEV_API_TARGET: process.env.E2E_API_TARGET ?? 'http://127.0.0.1:8000',
-      },
-      port: PREVIEW_PORT,
-      reuseExistingServer: false,
-      timeout: 120_000,
-    },
-  ],
+  webServer: deployed
+    ? []
+    : [
+        {
+          command: `npm run build && npm run preview -- --port ${PREVIEW_PORT} --strictPort`,
+          env: {
+            VITE_DEV_API_TARGET: process.env.E2E_API_TARGET ?? 'http://127.0.0.1:8000',
+          },
+          port: PREVIEW_PORT,
+          reuseExistingServer: false,
+          timeout: 120_000,
+        },
+      ],
 })
