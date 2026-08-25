@@ -64,11 +64,17 @@ def main() -> int:
     print(f"학습 스텝: {steps}")
 
     tokenizer = CLIPTokenizer.from_pretrained(MODEL_ID, subfolder="tokenizer")
+    # 이미지에는 fp16 파일만 들어 있다. 얼려 두는 두 부품은 fp16으로 그대로 쓰고,
+    # 학습하는 UNet만 fp32로 올려 짧은 학습에서 손실이 발산하지 않게 한다.
     text_encoder = CLIPTextModel.from_pretrained(
-        MODEL_ID, subfolder="text_encoder", torch_dtype=dtype
+        MODEL_ID, subfolder="text_encoder", variant="fp16", torch_dtype=dtype
     ).to(device)
-    vae = AutoencoderKL.from_pretrained(MODEL_ID, subfolder="vae", torch_dtype=dtype).to(device)
-    unet = UNet2DConditionModel.from_pretrained(MODEL_ID, subfolder="unet").to(device)
+    vae = AutoencoderKL.from_pretrained(
+        MODEL_ID, subfolder="vae", variant="fp16", torch_dtype=dtype
+    ).to(device)
+    unet = UNet2DConditionModel.from_pretrained(
+        MODEL_ID, subfolder="unet", variant="fp16", torch_dtype=torch.float32
+    ).to(device)
     scheduler = DDPMScheduler.from_pretrained(MODEL_ID, subfolder="scheduler")
 
     text_encoder.requires_grad_(False)

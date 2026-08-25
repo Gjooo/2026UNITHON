@@ -23,8 +23,14 @@ COPY run-demo-training.sh report_completion.py train_sd15_lora.py ./
 RUN chmod +x run-demo-training.sh && mkdir -p "$OUTPUT_DIR"
 
 # 모델 가중치를 미리 받아 둔다. 데모 중 다운로드에 시간을 쓰지 않기 위해서다.
+# 실제로 쓰는 세 부품의 fp16 파일만 받는다. 전체를 받으면 이미지가 몇 GB 커지고
+# 그만큼 Pod 시작 시 image pull 이 길어져 최대 실행시간을 까먹는다.
 RUN python3 -c "\
-from diffusers import StableDiffusionPipeline; \
-StableDiffusionPipeline.from_pretrained('stable-diffusion-v1-5/stable-diffusion-v1-5', safety_checker=None)"
+from huggingface_hub import snapshot_download; \
+snapshot_download('stable-diffusion-v1-5/stable-diffusion-v1-5', allow_patterns=[ \
+  'model_index.json', 'tokenizer/*', 'scheduler/*', \
+  'text_encoder/config.json', 'text_encoder/model.fp16.safetensors', \
+  'vae/config.json', 'vae/diffusion_pytorch_model.fp16.safetensors', \
+  'unet/config.json', 'unet/diffusion_pytorch_model.fp16.safetensors'])"
 
 CMD ["./run-demo-training.sh"]
