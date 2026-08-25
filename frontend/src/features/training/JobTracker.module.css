@@ -142,3 +142,14 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.hint {
+  background: var(--canvas-soft);
+  border: 1px solid var(--hairline-cool);
+  border-radius: var(--radius-md);
+  color: var(--ink-mute);
+  font-size: 13px;
+  line-height: 1.45;
+  margin-top: var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
+}

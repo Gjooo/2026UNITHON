@@ -17,6 +17,15 @@ const TITLE: Record<JobStatus, string> = {
 
 const STEPS = ['실행 환경 준비', '학습 실행', '종료 확인'] as const
 
+/**
+ * 실측상 환경 준비가 가장 오래 걸린다(이미지 내려받기·모델 로딩).
+ * 안내가 없으면 사용자가 멈춘 것으로 읽는다.
+ */
+const HINT: Partial<Record<JobStatus, string>> = {
+  PROVISIONING:
+    'GPU를 확보하고 학습 이미지를 내려받는 중입니다. 이 단계가 가장 오래 걸리며 몇 분 정도 걸릴 수 있어요.',
+}
+
 /** 상태별로 어느 단계까지 왔는지. 최종 상태는 모든 단계가 끝난 것으로 본다. */
 const ACTIVE_STEP: Record<JobStatus, number> = {
   DRAFT: -1,
@@ -64,6 +73,7 @@ export function JobTracker({ job, isCancelling, onCancel }: JobTrackerProps) {
           Agent가 선택한 GPU · {job.executionPlan.recommended.gpuType} ·{' '}
           {job.executionPlan.recommended.provider}
         </p>
+        {HINT[job.status] && <p className={styles.hint}>{HINT[job.status]}</p>}
       </div>
 
       <ol className={styles.steps}>

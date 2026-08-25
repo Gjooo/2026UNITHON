@@ -10,13 +10,11 @@ const baseURL = `http://localhost:${PREVIEW_PORT}`
  */
 export default defineConfig({
   testDir: './e2e',
-  testMatch: /flows\.spec\.ts/,
+  testMatch: /backend\.spec\.ts/,
   fullyParallel: false,
   workers: 1,
   reporter: [['list']],
   use: { baseURL, trace: 'off' },
-  // Fake backend 전용 제어 endpoint를 쓰는 시나리오는 제외한다.
-  grepInvert: /failed_execution_shows_safe_cause/,
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
   ],

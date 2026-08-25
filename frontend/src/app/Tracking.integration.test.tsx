@@ -12,6 +12,7 @@ import running from '@/test/fixtures/jobs/running.json'
 import terminating from '@/test/fixtures/jobs/terminating.json'
 import completed from '@/test/fixtures/jobs/completed.json'
 import cancelled from '@/test/fixtures/jobs/cancelled.json'
+import terminatingFailed from '@/test/fixtures/jobs/terminating-failed.json'
 
 type User = ReturnType<typeof userEvent.setup>
 
@@ -187,5 +188,53 @@ describe('실행 추적', () => {
     await waitFor(() =>
       expect(screen.getByText('실행이 중단됐어요')).toBeInTheDocument(),
     )
+  })
+
+  it('does_not_show_the_failure_message_before_the_final_status', async () => {
+    const user = setup()
+    await reachTracking(user)
+
+    // 실패 callback이 오면 서버는 결과를 즉시 기록하지만 상태는 TERMINATING에 머문다.
+    expect(terminatingFailed.status).toBe('TERMINATING')
+    expect(terminatingFailed.failureMessage).toBe('CUDA out of memory at step 120')
+
+    setServed(terminatingFailed)
+    await tick(2500)
+    await waitFor(() =>
+      expect(screen.getByText('실행 환경 종료를 확인하고 있어요')).toBeInTheDocument(),
+    )
+
+    expect(screen.queryByText('학습이 완료되지 않았어요')).not.toBeInTheDocument()
+    expect(screen.queryByText(terminatingFailed.failureMessage)).not.toBeInTheDocument()
+  })
+
+  it('tolerates_a_status_that_skips_running', async () => {
+    const user = setup()
+    await reachTracking(user)
+    await waitFor(() =>
+      expect(screen.getByText('실행 환경을 준비하고 있어요')).toBeInTheDocument(),
+    )
+
+    // 실제 GPU에서 RUNNING은 몇 초라 폴링이 통째로 건너뛸 수 있다.
+    setServed(terminating)
+    await tick(2500)
+    await waitFor(() =>
+      expect(screen.getByText('실행 환경 종료를 확인하고 있어요')).toBeInTheDocument(),
+    )
+
+    // 건너뛴 단계도 완료로 표시하고, 순서대로 지났다고 가정하지 않는다.
+    const steps = screen.getAllByRole('listitem')
+    expect(steps[0]).toHaveTextContent('완료')
+    expect(steps[1]).toHaveTextContent('완료')
+    expect(steps[2]).toHaveTextContent('진행 중')
+  })
+
+  it('tells_the_user_that_preparing_the_environment_takes_minutes', async () => {
+    const user = setup()
+    await reachTracking(user)
+
+    // 실측 7분 30초. 안내가 없으면 멈춘 것으로 읽힌다.
+    const tracker = await screen.findByRole('region', { name: '실행 상태' })
+    expect(within(tracker).getByText(/몇 분/)).toBeInTheDocument()
   })
 })

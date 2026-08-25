@@ -9,6 +9,7 @@ import failed from '@/test/fixtures/jobs/failed.json'
 import teardownUnconfirmed from '@/test/fixtures/jobs/failed-teardown-unconfirmed.json'
 import cancelled from '@/test/fixtures/jobs/cancelled.json'
 import running from '@/test/fixtures/jobs/running.json'
+import sessionFixture from '@/test/fixtures/session.json'
 import jobNotFound from '@/test/fixtures/errors/job-not-found.json'
 import sessionExpired from '@/test/fixtures/errors/session-required.json'
 
@@ -157,5 +158,31 @@ describe('새로고침 복구', () => {
     // 실패 중에도 마지막 정상 상태를 유지하고 최종 상태를 추정하지 않는다.
     expect(screen.getByText('학습을 실행하고 있어요')).toBeInTheDocument()
     expect(screen.getByText('연결을 다시 확인하는 중')).toBeInTheDocument()
+  })
+
+  it('always_offers_a_way_back_even_when_the_execution_is_used_up', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.post('*/api/v1/session', () =>
+        HttpResponse.json(
+          { ...sessionFixture, executionAllowance: { used: 1, limit: 1 } },
+          { status: 201 },
+        ),
+      ),
+    )
+    window.localStorage.setItem(ACTIVE_JOB_KEY, completed.id)
+    serveJob(completed)
+    renderApp()
+
+    const result = await screen.findByRole('region', { name: '실행 결과' })
+    expect(
+      within(result).getByText(/이 브라우저에서는 실제 실행을 한 번만 할 수 있습니다/),
+    ).toBeInTheDocument()
+    expect(within(result).queryByRole('button', { name: '새 실행안 만들기' })).not.toBeInTheDocument()
+
+    // 실행은 못 해도 비용 없는 비교는 계속할 수 있어야 한다.
+    await user.click(within(result).getByRole('button', { name: '다시 비교' }))
+    expect(await screen.findByLabelText('최대 예산')).toBeInTheDocument()
+    expect(window.localStorage.getItem(ACTIVE_JOB_KEY)).toBeNull()
   })
 })

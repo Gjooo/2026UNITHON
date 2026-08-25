@@ -103,9 +103,15 @@ export function JobResult({ job, canStartAnother, onStartAnother }: JobResultPro
           새 실행안 만들기
         </button>
       ) : (
-        <p className={styles.limitNotice}>
-          {EXECUTION_LIMIT_NOTICE} 비용이 들지 않는 비교는 계속할 수 있습니다.
-        </p>
+        <>
+          <p className={styles.limitNotice}>
+            {EXECUTION_LIMIT_NOTICE} 비용이 들지 않는 비교는 계속할 수 있습니다.
+          </p>
+          {/* 실행을 다 썼다고 결과 화면에 가둬 두지 않는다. */}
+          <button className={styles.compareAgain} type="button" onClick={onStartAnother}>
+            다시 비교
+          </button>
+        </>
       )}
     </section>
   )

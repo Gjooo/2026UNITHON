@@ -81,17 +81,19 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'POST' && pathname === '/api/v1/session') {
-    const token = crypto.randomUUID()
-    const session = { token, executionUsed: false }
-    sessions.set(token, session)
+    // 만들거나 **갱신**한다. 기존 쿠키가 유효하면 같은 세션을 유지해야 한다.
+    // 매번 새로 발급하면 진행 중인 Job의 소유권이 끊긴다.
+    const existing = sessionOf(req)
+    const session = existing ?? { token: crypto.randomUUID(), executionUsed: false }
+    sessions.set(session.token, session)
     return send(
       res,
       201,
       {
         expiresAt: '2026-09-01T19:47:38Z',
-        executionAllowance: { used: 0, limit: 1 },
+        executionAllowance: { used: session.executionUsed ? 1 : 0, limit: 1 },
       },
-      { 'Set-Cookie': `unwork_session=${token}; HttpOnly; Path=/; SameSite=Lax` },
+      { 'Set-Cookie': `unwork_session=${session.token}; HttpOnly; Path=/; SameSite=Lax` },
     )
   }
 

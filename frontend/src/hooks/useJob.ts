@@ -70,6 +70,9 @@ function useJobStatusMutation(request: (jobId: string) => Promise<{ status: JobS
         current ? { ...current, status: response.status } : current,
       )
       void queryClient.invalidateQueries({ queryKey: jobKey(jobId) })
+      // 실행을 시작하면 세션의 남은 횟수가 줄어든다. 캐시된 값을 그대로 두면
+      // 화면이 계속 실행 가능하다고 말하고 사용자가 409를 맞는다.
+      void queryClient.invalidateQueries({ queryKey: ['session'] })
     },
   })
 }

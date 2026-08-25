@@ -129,3 +129,16 @@
 .detail[hidden] {
   display: none;
 }
+
+.compareAgain {
+  background: var(--canvas);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  justify-self: start;
+  line-height: 1;
+  padding: var(--space-md) var(--space-lg);
+}
