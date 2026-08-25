@@ -1,13 +1,22 @@
 # UNWORK 학습 실행 Agent — MVP ERD
 
-`PRD-final.md`와 설계 합의를 반영한 **Runpod 단일 공급자·단일 사용자 데모용 PostgreSQL 논리 ERD**다. 사용자에게 보이는 중심 객체는 `TRAINING_JOBS`이며, GPU VM은 실행 이력을 위한 내부 객체다.
+`PRD-final.md`와 설계 합의를 반영한 **Runpod 단일 공급자·익명 세션 기반 웹 데모용 PostgreSQL 논리 ERD**다. 사용자에게 보이는 중심 객체는 `TRAINING_JOBS`이며, GPU VM은 실행 이력을 위한 내부 객체다.
 
 모든 금액 컬럼은 **USD**(`numeric(12,4)`)다. 환율·실청구액 정산은 MVP 범위에 포함하지 않으며, 비용은 승인된 Runpod 시간당 가격과 경과 시간으로 계산한 추정치다.
 
 ```mermaid
 erDiagram
+    ANONYMOUS_SESSIONS {
+        uuid id PK
+        varchar session_token_hash UK
+        timestamptz expires_at
+        timestamptz created_at
+        timestamptz last_seen_at
+    }
+
     TRAINING_JOBS {
         uuid id PK
+        uuid owner_session_id FK
         varchar repository_url
         text execution_command
         text completion_condition
@@ -172,6 +181,7 @@ erDiagram
         timestamptz occurred_at
     }
 
+    ANONYMOUS_SESSIONS ||--o{ TRAINING_JOBS : owns
     TRAINING_JOBS ||--o{ WORKLOAD_ANALYSES : has
     TRAINING_JOBS ||--o{ EXECUTION_PLANS : has
     WORKLOAD_ANALYSES ||--o{ EXECUTION_PLANS : informs
@@ -201,7 +211,8 @@ erDiagram
 
 | 테이블 | 역할 |
 | --- | --- |
-| `TRAINING_JOBS` | Repository URL, 실행 명령, 예산, 완료 조건을 가진 사용자의 작업 단위. MVP는 단일 사용자이므로 `USERS` 테이블을 두지 않는다. |
+| `ANONYMOUS_SESSIONS` | 로그인 없이 웹 브라우저를 구분하는 소유권 경계다. HttpOnly 쿠키의 원문은 저장하지 않고 해시만 보관한다. |
+| `TRAINING_JOBS` | Repository URL, 실행 명령, 예산, 완료 조건을 가진 사용자의 작업 단위. `owner_session_id`를 통해 익명 세션에만 노출한다. |
 | `WORKLOAD_ANALYSES` | 실행 가능 여부, VRAM 요구량, 분석 당시 해석한 commit SHA를 순서대로 보존한다. |
 | `EXECUTION_PLANS` / `PLAN_OPTIONS` | 분석 결과로 만든 Plan 버전과 최대 세 개의 Runpod 후보(저렴함·빠름·균형형) 스냅샷이다. |
 | `EXECUTION_CONTRACTS` | 사용자가 승인한 불변 실행 계약이다. 코드·명령·예산·가격·Golden Path 버전을 고정한다. |
@@ -237,13 +248,15 @@ Training 오류·예산 90% 도달·최대 실행시간·사용자 취소도 동
 
 ## 핵심 무결성 및 보안 규칙
 
-1. `WORKLOAD_ANALYSES (job_id, sequence_no)`, `EXECUTION_PLANS (job_id, version_no)`, `EXECUTION_ATTEMPTS (job_id, attempt_no)`, `RESOURCE_CLEANUP_ATTEMPTS (resource_id, sequence_no)`는 각각 유니크하다.
-2. `EXECUTION_CONTRACTS.plan_id`, `JOB_PROVIDER_CREDENTIALS.contract_id`, `COMPUTE_RESOURCES.attempt_id`는 각각 유니크하다. `selected_option_id`가 같은 Plan의 Option인지 복합 FK 또는 트리거로 검증한다.
-3. Plan당 `PLAN_OPTIONS.strategy`는 유니크하며 `CHEAPEST`, `FASTEST`, `BALANCED` 중 하나다. 실행 가능한 후보는 서로 다른 `runpod_gpu_type`이어야 한다. 후보가 부족하면 가능한 후보와 제외 이유만 보인다.
-4. 승인 API는 `approval_idempotency_key`를 사용한다. Contract 승인과 첫 Attempt 생성은 한 트랜잭션으로 처리하고, Job당 `PROVISIONING`부터 `FINALIZING`까지의 활성 Attempt는 하나만 허용하는 부분 유니크 인덱스를 둔다.
-5. 승인 직전 선택 Option의 Runpod GPU 종류·가용성·시간당 가격을 재조회한다. 하나라도 달라지면 승인하지 않고 기존 Plan을 `SUPERSEDED`로 전환한 뒤 새 Plan을 생성한다.
-6. 입력 수정은 승인 전까지만 허용한다. 수정 시 기존 Plan은 `SUPERSEDED`, Job은 `ANALYZING`이 되며 새 Analysis·Plan을 만든다. Contract 승인 뒤의 입력 변경은 새 Job으로만 가능하다.
-7. Contract에는 `repository_url_snapshot`, 분석 시 해석한 `commit_sha_snapshot`, 명령·완료 조건·예산·실행시간·가격·Golden Path 버전을 복사한다. 실행 및 인프라 중단 후 재개는 이 스냅샷의 commit SHA만 checkout한다.
-8. 비용은 `elapsed_seconds / 3600 × hourly_gpu_price_usd_snapshot`으로 계산한다. 1분마다 비용 Snapshot을 남기고, 80%는 경고 이벤트를 한 번 기록하며 90% 이상 또는 최대 실행시간 도달 시 중단·checkpoint 보관 시도·VM 종료를 시작한다.
-9. `JOB_PROVIDER_CREDENTIALS.secret_vault_ref`만 DB에 저장한다. Runpod 키 원문, VM ID, Provider API 오류 원문은 일반 `JOB_EVENTS`에 기록하지 않는다. 완료·실패·취소 시 Vault 원문을 폐기하고 `disposed_at`을 남긴다.
-10. Artifact 원본은 `download_expires_at`을 업로드 후 24시간으로 설정하고 만료 뒤 삭제한다. 다운로드 URL은 DB에 저장하지 않고 요청 시 짧은 수명의 서명 URL로 발급한다. Job 메타데이터는 MVP 데모 기간 동안 유지한다.
+1. 모든 Job 조회·수정·승인·취소·artifact 요청은 쿠키로 식별한 `ANONYMOUS_SESSIONS.id`와 `TRAINING_JOBS.owner_session_id`가 일치할 때만 허용한다. 불일치는 리소스 존재를 노출하지 않도록 `404`를 반환한다.
+2. `WORKLOAD_ANALYSES (job_id, sequence_no)`, `EXECUTION_PLANS (job_id, version_no)`, `EXECUTION_ATTEMPTS (job_id, attempt_no)`, `RESOURCE_CLEANUP_ATTEMPTS (resource_id, sequence_no)`는 각각 유니크하다.
+3. `EXECUTION_CONTRACTS.plan_id`, `COMPUTE_RESOURCES.attempt_id`는 각각 유니크하다. `JOB_PROVIDER_CREDENTIALS.contract_id`는 키 연결 시에는 `NULL`을 허용하고, 승인 뒤 생성된 Contract에 연결한 뒤 유니크하게 관리한다. `selected_option_id`가 같은 Plan의 Option인지 복합 FK 또는 트리거로 검증한다.
+4. Plan당 `PLAN_OPTIONS.strategy`는 유니크하며 `CHEAPEST`, `FASTEST`, `BALANCED` 중 하나다. 실행 가능한 후보는 서로 다른 `runpod_gpu_type`이어야 한다. 후보가 부족하면 가능한 후보와 제외 이유만 보인다.
+5. 승인 API는 `approval_idempotency_key`를 사용한다. Contract 승인과 첫 Attempt 생성은 한 트랜잭션으로 처리하고, Job당 `PROVISIONING`부터 `FINALIZING`까지의 활성 Attempt는 하나만 허용하는 부분 유니크 인덱스를 둔다.
+6. 승인 직전 선택 Option의 Runpod GPU 종류·가용성·시간당 가격을 재조회한다. 하나라도 달라지면 승인하지 않고 기존 Plan을 `SUPERSEDED`로 전환한 뒤 새 Plan을 생성한다.
+7. 입력 수정은 승인 전까지만 허용한다. 수정 시 기존 Plan은 `SUPERSEDED`, Job은 `ANALYZING`이 되며 새 Analysis·Plan을 만든다. Contract 승인 뒤의 입력 변경은 새 Job으로만 가능하다.
+8. Contract에는 `repository_url_snapshot`, 분석 시 해석한 `commit_sha_snapshot`, 명령·완료 조건·예산·실행시간·가격·Golden Path 버전을 복사한다. 실행 및 인프라 중단 후 재개는 이 스냅샷의 commit SHA만 checkout한다.
+9. 비용은 `elapsed_seconds / 3600 × hourly_gpu_price_usd_snapshot`으로 계산한다. 1분마다 비용 Snapshot을 남기고, 80%는 경고 이벤트를 한 번 기록하며 90% 이상 또는 최대 실행시간 도달 시 중단·checkpoint 보관 시도·VM 종료를 시작한다.
+10. `JOB_PROVIDER_CREDENTIALS.secret_vault_ref`만 DB에 저장한다. Runpod 키 원문, VM ID, Provider API 오류 원문은 일반 `JOB_EVENTS`에 기록하지 않는다. 완료·실패·취소 시 Vault 원문을 폐기하고 `disposed_at`을 남긴다.
+11. 상태를 바꾸는 API는 HttpOnly 세션 쿠키와 `X-CSRF-Token`을 함께 검증한다. CSRF 토큰은 세션별로 발급하며, 쿠키 원문·토큰 원문은 DB에 저장하지 않는다.
+12. Artifact 원본은 `download_expires_at`을 업로드 후 24시간으로 설정하고 만료 뒤 삭제한다. 다운로드 URL은 DB에 저장하지 않고 요청 시 짧은 수명의 서명 URL로 발급한다. Job 메타데이터는 MVP 데모 기간 동안 유지한다.
