@@ -163,44 +163,66 @@ GPU를 만들지 않고 설정과 GPU 프로필 유효성만 검사한다. 통�
 fly ssh console -C "python -m training_cost_optimizer.mvp.smoke --confirm RUNPOD --profile runpod-rtx4090-v1"
 ```
 
-## Railway (프런트엔드 연동용)
+## Railway (Hobby)
 
-프런트엔드가 항상 붙어 있을 수 있는 주소가 필요해 Railway에 올린다. **실제 GPU를 쓰는 실행은 여기서 하지 않는다.** `MVP_PROVIDER_MODE=fake`로 두면 GPU가 만들어지지 않으므로 크레딧이 끊겨도 잃을 것이 없다. 실제 GPU 시연은 맥북 + 터널로 한다.
+Railway가 고정 HTTPS 주소를 주므로 실제 GPU 실행까지 여기서 처리한다. 터널과 달리 주소가 바뀌지 않고 맥북이 꺼져도 살아 있다.
 
-`railway.json`이 Dockerfile 빌드, `/health` 헬스체크, replica 1개를 지정한다. 웹 UI에서 할 일은 다음뿐이다.
+`railway.json`이 Dockerfile 빌드, `/health` 헬스체크, replica 1개를 지정한다. 콘솔에서 할 일은 아래뿐이다.
 
-1. **New Project → Deploy from GitHub repo** → `2026UNITHON` 선택
+### 1단계 — fake 모드로 올려 주소부터 확보
+
+GPU를 만들지 않는 상태로 먼저 띄워, 공개 주소와 callback 경로가 바깥에서 닿는지 확인한다. 이 확인 없이 실제 모드로 넘어가면 안 된다.
+
+1. **New Project → Deploy from GitHub repo** → `2026UNITHON`
 2. 서비스 **Settings**
    - Root Directory: `ai-training-cost-optimizer`
    - Branch: `backend`
-   - Serverless(App Sleeping)가 꺼져 있는지 확인한다. 잠들면 실행 중 작업을 아무도 종료하지 못한다
+   - Serverless(App Sleeping)가 꺼져 있는지 확인한다. 잠들면 실행 중 작업의 GPU를 아무도 종료하지 못한다
 3. **Variables**
 
    ```text
    MVP_PROVIDER_MODE=fake
    MVP_DATABASE_PATH=/data/mvp.sqlite3
-   MVP_MAX_RUNTIME_MINUTES=10
+   MVP_MAX_RUNTIME_MINUTES=15
    FRONTEND_ORIGINS=<프런트엔드 배포 origin>
    ```
 
-   `RUNPOD_API_KEY`와 `BACKEND_PUBLIC_BASE_URL`은 넣지 않는다. fake 모드에서는 쓰이지 않는다.
-4. **Volume** 생성 후 마운트 경로를 `/data`로 지정
-5. **Settings → Networking → Generate Domain**으로 공개 주소 발급
+4. **Volume** 생성 후 마운트 경로 `/data`
+5. **Settings → Networking → Generate Domain**
 
-### Free 요금제로 충분한가
-
-실측 기준 이 서비스의 유휴 사용량은 메모리 62MB, CPU 0.3%다. Railway 요율(RAM $10/GB·월, CPU $20/vCPU·월, 볼륨 $0.15/GB·월)로 환산하면 월 $0.75 안팎이라 Free의 월 $1 크레딧 안에 들어온다. Free 상한인 replica 1개, 메모리 0.5GB, 볼륨 0.5GB도 모두 만족한다.
-
-폴링이 계속 붙어 CPU가 3%까지 오르면 월 $1.2가 되어 크레딧을 넘길 수 있다. 넘기면 서비스가 멈추고 청구되지는 않는다. fake 모드로만 쓰는 한 이것이 유일한 영향이다.
-
-### 배포 확인
+확인:
 
 ```bash
-curl -i https://<발급받은 주소>/health
-curl -i -X POST https://<발급받은 주소>/api/v1/session
+curl -i https://<주소>/health
+curl -i -X POST https://<주소>/api/v1/session
+curl -i -X POST https://<주소>/api/v1/internal/jobs/none/completion \
+  -H "Content-Type: application/json" \
+  -d '{"outcome":"SUCCEEDED","exitCode":0,"message":"reachability check"}'
 ```
 
-`Set-Cookie`에 `HttpOnly`와 `Secure`가 함께 있어야 한다. 프런트엔드는 이 주소를 `VITE_API_BASE_URL`로 쓰거나, 자신의 배포 도메인에서 `/api`를 이 주소로 프록시한다.
+`Set-Cookie`에 `HttpOnly`와 `Secure`가 있어야 하고, 마지막 요청은 `404 JOB_NOT_FOUND`가 나와야 한다. 404가 성공 신호다. 요청이 서버까지 도달했다는 뜻이다.
+
+### 2단계 — 실제 GPU 모드로 전환
+
+1단계가 통과한 뒤에만 진행한다.
+
+```text
+RUNPOD_API_KEY=<키>
+BACKEND_PUBLIC_BASE_URL=https://<1단계에서 발급받은 주소>
+MVP_PROVIDER_MODE=runpod
+```
+
+`RUNPOD_API_KEY`는 Variables에 넣되 값이 로그에 찍히지 않는지 확인한다. 저장하면 재배포되고, 로그에 `provider_mode=runpod`이 보이면 정상이다. 키가 없거나 callback 주소가 HTTPS가 아니면 **기동 단계에서 실패한다.** 첫 요청까지 기다리지 않는다.
+
+`MVP_MAX_RUNTIME_MINUTES`는 15로 둔다. 실측한 이미지 pull이 7분 이상이라 10분으로는 학습 시간이 남지 않는다.
+
+### 왜 15분인가
+
+실제 GPU 실행 한 번을 재보니 준비(이미지 pull + 모델 로딩)에 7분 30초, 학습에 7초가 들었다. Runpod 머신의 pull 속도가 약 13MB/s여서 이미지 크기가 그대로 준비 시간이 된다. 자세한 측정은 [training-container/README.md](../training-container/README.md)에 있다.
+
+### 비용
+
+실측 유휴 사용량은 메모리 62MB, CPU 0.3%다. Railway 요율(RAM $10/GB·월, CPU $20/vCPU·월, 볼륨 $0.15/GB·월)로 월 $0.75 안팎이라 Hobby의 $5 크레딧 안에서 여유가 크다.
 
 ## 환경변수
 
