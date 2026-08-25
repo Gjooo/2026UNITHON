@@ -2,6 +2,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import type { CreateJobInput } from '@/api/jobs'
+import { Button } from '@/components/ui/Button'
 import styles from './ConstraintForm.module.css'
 import { ESTIMATE_DISCLAIMER, PRIORITY_OPTIONS } from './scenario'
 
@@ -120,13 +121,14 @@ export function ConstraintForm({
           {ESTIMATE_DISCLAIMER}
         </p>
 
-        <button
+        <Button
           className={styles.submit}
+          variant="primary"
           type="submit"
           disabled={!isSessionReady || isSubmitting}
         >
           Agent에게 실행안 요청
-        </button>
+        </Button>
       </section>
     </form>
   )

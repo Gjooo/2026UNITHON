@@ -28,38 +28,8 @@
   gap: var(--space-md);
 }
 
-.approve {
-  background: var(--primary);
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  color: var(--on-primary);
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1;
-  padding: var(--space-md) var(--space-lg);
-}
-
 .approve:hover:not(:disabled) {
   background: var(--primary-deep);
-}
-
-.approve:disabled {
-  background: var(--hairline-cool);
-  color: var(--ink-faint);
-  cursor: not-allowed;
-}
-
-.secondary {
-  background: var(--canvas);
-  border: 1px solid var(--hairline-strong);
-  border-radius: var(--radius-sm);
-  color: var(--ink);
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1;
-  padding: var(--space-md) var(--space-lg);
 }
 
 .dialogFigures {

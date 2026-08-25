@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import type { JobStatus, TrainingJob } from '@/api/jobs'
 import { isInFlight } from '@/hooks/useJob'
@@ -107,14 +108,14 @@ export function JobTracker({ job, isCancelling, onCancel }: JobTrackerProps) {
       </dl>
 
       {CANCELLABLE.has(job.status) && (
-        <button
+        <Button
           className={styles.cancel}
-          type="button"
+          variant="dangerOutline"
           disabled={isCancelling}
           onClick={() => setDialogOpen(true)}
         >
           실행 중단
-        </button>
+        </Button>
       )}
 
       {isDialogOpen && (
@@ -123,16 +124,9 @@ export function JobTracker({ job, isCancelling, onCancel }: JobTrackerProps) {
           onClose={() => setDialogOpen(false)}
           actions={
             <>
-              <button
-                className={styles.dialogSecondary}
-                type="button"
-                onClick={() => setDialogOpen(false)}
-              >
-                계속 실행
-              </button>
-              <button
-                className={styles.dialogDanger}
-                type="button"
+              <Button onClick={() => setDialogOpen(false)}>계속 실행</Button>
+              <Button
+                variant="danger"
                 disabled={isCancelling}
                 onClick={() => {
                   setDialogOpen(false)
@@ -140,7 +134,7 @@ export function JobTracker({ job, isCancelling, onCancel }: JobTrackerProps) {
                 }}
               >
                 중단하기
-              </button>
+              </Button>
             </>
           }
         >

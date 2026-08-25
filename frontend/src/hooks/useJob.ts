@@ -21,6 +21,17 @@ export function isInFlight(status: JobStatus | undefined): boolean {
   return status !== undefined && IN_FLIGHT.has(status)
 }
 
+const TERMINAL: ReadonlySet<JobStatus> = new Set<JobStatus>([
+  'COMPLETED',
+  'FAILED',
+  'CANCELLED',
+])
+
+/** DRAFT는 진행 중도 최종도 아니다. 아직 비용이 발생하지 않은 상태다. */
+export function isTerminal(status: JobStatus | undefined): boolean {
+  return status !== undefined && TERMINAL.has(status)
+}
+
 export function jobKey(jobId: string) {
   return ['job', jobId] as const
 }

@@ -24,6 +24,9 @@ export function toUserMessage(error: unknown): string {
   return FALLBACK
 }
 
+export const EXECUTION_LIMIT_NOTICE =
+  '이 브라우저에서는 실제 실행을 한 번만 할 수 있습니다.'
+
 export const PRIORITY_LABEL: Record<string, string> = {
   CHEAPEST: '저비용',
   BALANCED: '균형',

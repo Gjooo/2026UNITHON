@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isInFlight, pollIntervalMs } from './useJob'
+import { isInFlight, isTerminal, pollIntervalMs } from './useJob'
 
 describe('폴링 정책', () => {
   it('polls_only_non_terminal_statuses', () => {
@@ -13,6 +13,19 @@ describe('폴링 정책', () => {
     expect(isInFlight('FAILED')).toBe(false)
     expect(isInFlight('CANCELLED')).toBe(false)
     expect(isInFlight(undefined)).toBe(false)
+  })
+
+  it('treats_draft_as_neither_in_flight_nor_terminal', () => {
+    // 비용이 발생하지 않은 상태다. 폴링도 결과 표시도 하지 않는다.
+    expect(isInFlight('DRAFT')).toBe(false)
+    expect(isTerminal('DRAFT')).toBe(false)
+
+    expect(isTerminal('COMPLETED')).toBe(true)
+    expect(isTerminal('FAILED')).toBe(true)
+    expect(isTerminal('CANCELLED')).toBe(true)
+    // 자원 종료 확인 전이므로 최종이 아니다.
+    expect(isTerminal('TERMINATING')).toBe(false)
+    expect(isTerminal(undefined)).toBe(false)
   })
 
   it('backs_off_exponentially_up_to_fifteen_seconds', () => {

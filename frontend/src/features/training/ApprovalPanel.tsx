@@ -2,10 +2,9 @@ import { useState } from 'react'
 import { Dialog } from '@/components/ui/Dialog'
 import type { TrainingJob } from '@/api/jobs'
 import { formatKrw, formatMinutes } from './format'
+import { EXECUTION_LIMIT_NOTICE } from './messages'
+import { Button } from '@/components/ui/Button'
 import styles from './ApprovalPanel.module.css'
-
-export const EXECUTION_LIMIT_NOTICE =
-  '이 브라우저에서는 실제 실행을 한 번만 할 수 있습니다.'
 
 interface ApprovalPanelProps {
   job: TrainingJob
@@ -35,17 +34,14 @@ export function ApprovalPanel({
       {!canStart && <p className={styles.limitNotice}>{EXECUTION_LIMIT_NOTICE}</p>}
 
       <div className={styles.actions}>
-        <button
-          className={styles.approve}
-          type="button"
+        <Button
+          variant="primary"
           disabled={!canStart || isStarting}
           onClick={() => setDialogOpen(true)}
         >
           실행 승인
-        </button>
-        <button className={styles.secondary} type="button" onClick={onEditConstraints}>
-          입력 수정
-        </button>
+        </Button>
+        <Button onClick={onEditConstraints}>입력 수정</Button>
       </div>
 
       {isDialogOpen && (
@@ -54,21 +50,10 @@ export function ApprovalPanel({
           onClose={() => setDialogOpen(false)}
           actions={
             <>
-              <button
-                className={styles.secondary}
-                type="button"
-                onClick={() => setDialogOpen(false)}
-              >
-                취소
-              </button>
-              <button
-                className={styles.approve}
-                type="button"
-                disabled={isStarting}
-                onClick={onApprove}
-              >
+              <Button onClick={() => setDialogOpen(false)}>취소</Button>
+              <Button variant="primary" disabled={isStarting} onClick={onApprove}>
                 승인하고 실행 시작
-              </button>
+              </Button>
             </>
           }
         >

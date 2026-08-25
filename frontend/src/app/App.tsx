@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { ApiError } from '@/api/errors'
 import { useSession } from '@/hooks/useSession'
 import { useCreateJob } from '@/hooks/useCreateJob'
-import { useCancelJob, useJob, useStartJob } from '@/hooks/useJob'
+import { isTerminal, useCancelJob, useJob, useStartJob } from '@/hooks/useJob'
 import { ConstraintForm } from '@/features/training/ConstraintForm'
 import { ExecutionPlanReview } from '@/features/training/ExecutionPlanReview'
 import { ApprovalPanel } from '@/features/training/ApprovalPanel'
@@ -68,104 +68,99 @@ export function App() {
     setJobId(null)
   }
 
-  if (job && (job.status === 'COMPLETED' || job.status === 'FAILED' || job.status === 'CANCELLED')) {
+  if (job && isTerminal(job.status)) {
     return (
-      <Shell>
-        <h1 className={styles.pageTitle}>실행 결과</h1>
-        <div className={styles.content}>
-          <JobResult job={job} canStartAnother={canStart} onStartAnother={startAnother} />
-        </div>
-      </Shell>
+      <Screen title="실행 결과">
+        <JobResult job={job} canStartAnother={canStart} onStartAnother={startAnother} />
+      </Screen>
     )
   }
 
   if (job && job.status !== 'DRAFT') {
     return (
-      <Shell>
-        <h1 className={styles.pageTitle}>실행 상태</h1>
-        <div className={styles.content}>
-          {cancelJob.isError && (
-            <p className={styles.formAlert} role="alert">
-              {toUserMessage(cancelJob.error)}
-            </p>
-          )}
-          {jobQuery.isError && (
-            <p className={styles.connectionNotice}>연결을 다시 확인하는 중</p>
-          )}
-          <JobTracker
-            job={job}
-            isCancelling={cancelJob.isPending}
-            onCancel={() => cancelJob.mutate(job.id)}
-          />
-        </div>
-      </Shell>
+      <Screen title="실행 상태">
+        <Alert error={cancelJob.error} />
+        {jobQuery.isError && <p className={styles.connectionNotice}>연결을 다시 확인하는 중</p>}
+        <JobTracker
+          job={job}
+          isCancelling={cancelJob.isPending}
+          onCancel={() => cancelJob.mutate(job.id)}
+        />
+      </Screen>
     )
   }
 
   if (job) {
     return (
-      <Shell>
-        <h1 className={styles.pageTitle}>Agent가 실행안을 비교했어요</h1>
-        <p className={styles.pageLead}>
-          아래 실행 계약은 Agent가 고정한 값입니다. GPU를 직접 바꾸지 않습니다.
-        </p>
-        <div className={styles.content}>
-          {startJob.isError && (
-            <p className={styles.formAlert} role="alert">
-              {toUserMessage(startJob.error)}
-            </p>
-          )}
-          <ExecutionPlanReview job={job} />
-          <div className={styles.panelGap}>
-            <ApprovalPanel
-              job={job}
-              canStart={canStart}
-              isStarting={startJob.isPending}
-              onApprove={() => startJob.mutate(job.id)}
-              onEditConstraints={() => setJobId(null)}
-            />
-          </div>
+      <Screen
+        title="Agent가 실행안을 비교했어요"
+        lead="아래 실행 계약은 Agent가 고정한 값입니다. GPU를 직접 바꾸지 않습니다."
+      >
+        <Alert error={startJob.error} />
+        <ExecutionPlanReview job={job} />
+        <div className={styles.panelGap}>
+          <ApprovalPanel
+            job={job}
+            canStart={canStart}
+            isStarting={startJob.isPending}
+            onApprove={() => startJob.mutate(job.id)}
+            onEditConstraints={() => setJobId(null)}
+          />
         </div>
-      </Shell>
+      </Screen>
     )
   }
 
   return (
-    <Shell>
-      <h1 className={styles.pageTitle}>예산과 우선순위만 정하면 됩니다</h1>
-      <p className={styles.pageLead}>
-        Agent가 검증된 GPU 후보를 비교해 실행안을 추천합니다. GPU 콘솔, SSH, CUDA 설정은
-        다루지 않습니다.
-      </p>
-      <div className={styles.content}>
-        {recoveryNotice && (
-          <p className={styles.formAlert} role="alert">
-            {recoveryNotice}
-          </p>
-        )}
-        {createJob.isError && (
-          <p className={styles.formAlert} role="alert">
-            {toUserMessage(createJob.error)}
-          </p>
-        )}
-        <ConstraintForm
-          isSessionReady={session.isSuccess}
-          isSubmitting={createJob.isPending}
-          onSubmit={createJob.mutate}
-        />
-      </div>
-    </Shell>
+    <Screen
+      title="예산과 우선순위만 정하면 됩니다"
+      lead="Agent가 검증된 GPU 후보를 비교해 실행안을 추천합니다. GPU 콘솔, SSH, CUDA 설정은 다루지 않습니다."
+    >
+      {recoveryNotice && (
+        <p className={styles.formAlert} role="alert">
+          {recoveryNotice}
+        </p>
+      )}
+      <Alert error={createJob.error} />
+      <ConstraintForm
+        isSessionReady={session.isSuccess}
+        isSubmitting={createJob.isPending}
+        onSubmit={createJob.mutate}
+      />
+    </Screen>
   )
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+/** 흐름을 바꾸는 오류는 toast가 아니라 화면 상단에 고정해 읽을 시간을 준다. */
+function Alert({ error }: { error: unknown }) {
+  if (!error) return null
+  return (
+    <p className={styles.formAlert} role="alert">
+      {toUserMessage(error)}
+    </p>
+  )
+}
+
+function Screen({
+  title,
+  lead,
+  children,
+}: {
+  title: string
+  lead?: string
+  children: ReactNode
+}) {
   return (
     <div className={styles.app}>
       <header className={styles.header}>
         <span className={styles.wordmark}>UNWORK</span>
         <SessionStatus />
       </header>
-      <main className={styles.main}>{children}</main>
+      <main className={styles.main}>
+        <h1 className={styles.pageTitle}>{title}</h1>
+        {lead && <p className={styles.pageLead}>{lead}</p>}
+        <div className={styles.content}>{children}</div>
+      </main>
     </div>
   )
 }

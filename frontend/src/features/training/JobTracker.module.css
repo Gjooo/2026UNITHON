@@ -95,16 +95,7 @@
 }
 
 .cancel {
-  background: var(--canvas);
-  border: 1px solid var(--status-danger);
-  border-radius: var(--radius-sm);
-  color: var(--status-danger);
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
   justify-self: start;
-  line-height: 1;
-  padding: var(--space-md) var(--space-lg);
 }
 
 .cancel:disabled {
@@ -113,29 +104,7 @@
   cursor: not-allowed;
 }
 
-.dialogDanger {
-  background: var(--status-danger);
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  color: var(--on-dark);
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1;
-  padding: var(--space-md) var(--space-lg);
-}
 
-.dialogSecondary {
-  background: var(--canvas);
-  border: 1px solid var(--hairline-strong);
-  border-radius: var(--radius-sm);
-  color: var(--ink);
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1;
-  padding: var(--space-md) var(--space-lg);
-}
 
 @media (max-width: 767px) {
   .figures {

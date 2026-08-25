@@ -107,18 +107,6 @@
   padding: var(--space-md) var(--space-lg);
 }
 
-.restart {
-  background: var(--primary);
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  color: var(--on-primary);
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  justify-self: start;
-  line-height: 1;
-  padding: var(--space-md) var(--space-lg);
-}
 
 @media (max-width: 767px) {
   .facts {
@@ -130,15 +118,7 @@
   display: none;
 }
 
-.compareAgain {
-  background: var(--canvas);
-  border: 1px solid var(--hairline-strong);
-  border-radius: var(--radius-sm);
-  color: var(--ink);
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
+
+.selfStart {
   justify-self: start;
-  line-height: 1;
-  padding: var(--space-md) var(--space-lg);
 }
