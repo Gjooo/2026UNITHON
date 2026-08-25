@@ -39,6 +39,7 @@ const jobs = new Map()
 
 // 테스트가 결과 분기를 고르기 위한 제어. 실제 API에는 없는 __fake 이름공간이다.
 let nextOutcome = 'COMPLETED'
+let forceBusy = false
 
 function send(res, status, body, headers = {}) {
   const payload = body === null ? '' : JSON.stringify(body)
@@ -73,6 +74,12 @@ function withStatus(base, status, jobId, constraint) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost')
   const { pathname } = url
+
+  if (req.method === 'POST' && pathname === '/__fake/busy') {
+    const body = await readBody(req)
+    forceBusy = Boolean(body?.busy)
+    return send(res, 204, null)
+  }
 
   if (req.method === 'POST' && pathname === '/__fake/outcome') {
     const body = await readBody(req)
@@ -133,7 +140,7 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'POST' && action === '/start') {
     if (job.status !== 'DRAFT') return send(res, 409, ERR.demoBusy)
-    if (scenario === 'demo-busy') return send(res, 409, ERR.demoBusy)
+    if (forceBusy || scenario === 'demo-busy') return send(res, 409, ERR.demoBusy)
     if (session.executionUsed) return send(res, 409, ERR.executionUsed)
     session.executionUsed = true
     setStatus(job, 'PROVISIONING', PROVISIONING)

@@ -27,7 +27,9 @@ export function Dialog({ title, onClose, children, actions }: DialogProps) {
 
     return () => {
       document.body.style.overflow = previousOverflow
-      trigger?.focus()
+      // 스크롤 없이 focus만 되돌린다. 닫히면서 화면이 오류 alert에서 trigger로
+      // 끌려가면, 사용자는 눌렀는데 아무 일도 없었다고 느낀다.
+      trigger?.focus({ preventScroll: true })
     }
   }, [])
 

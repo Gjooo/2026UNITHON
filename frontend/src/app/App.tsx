@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { ApiError } from '@/api/errors'
 import { useSession } from '@/hooks/useSession'
 import { useCreateJob } from '@/hooks/useCreateJob'
@@ -103,7 +103,7 @@ export function App() {
             job={job}
             canStart={canStart}
             isStarting={startJob.isPending}
-            onApprove={() => startJob.mutate(job.id)}
+            onApprove={() => startJob.mutateAsync(job.id)}
             onEditConstraints={() => setJobId(null)}
           />
         </div>
@@ -131,11 +131,25 @@ export function App() {
   )
 }
 
-/** 흐름을 바꾸는 오류는 toast가 아니라 화면 상단에 고정해 읽을 시간을 준다. */
+/**
+ * 흐름을 바꾸는 오류는 toast가 아니라 화면 상단에 고정해 읽을 시간을 준다.
+ *
+ * 다만 상단에 두기만 하면 페이지가 길 때 사용자가 못 본다. 승인 버튼은 아래에
+ * 있고 오류는 위에 나타나므로, 누른 자리에서는 아무 일도 없는 것처럼 보인다.
+ * 나타날 때 시야로 가져오고 focus를 옮겨 화면 낭독기에도 전달한다.
+ */
 function Alert({ error }: { error: unknown }) {
+  const ref = useRef<HTMLParagraphElement>(null)
+
+  useEffect(() => {
+    if (!error) return
+    ref.current?.scrollIntoView?.({ block: 'center' })
+    ref.current?.focus()
+  }, [error])
+
   if (!error) return null
   return (
-    <p className={styles.formAlert} role="alert">
+    <p className={styles.formAlert} ref={ref} role="alert" tabIndex={-1}>
       {toUserMessage(error)}
     </p>
   )

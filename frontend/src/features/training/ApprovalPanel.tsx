@@ -10,7 +10,8 @@ interface ApprovalPanelProps {
   job: TrainingJob
   canStart: boolean
   isStarting: boolean
-  onApprove: () => void
+  /** 성공·실패 어느 쪽이든 settle될 때까지 기다린다. dialog를 닫을 시점을 알아야 한다. */
+  onApprove: () => Promise<unknown>
   onEditConstraints: () => void
 }
 
@@ -51,7 +52,20 @@ export function ApprovalPanel({
           actions={
             <>
               <Button onClick={() => setDialogOpen(false)}>취소</Button>
-              <Button variant="primary" disabled={isStarting} onClick={onApprove}>
+              <Button
+                variant="primary"
+                disabled={isStarting}
+                onClick={async () => {
+                  try {
+                    await onApprove()
+                  } catch {
+                    // 오류 문구는 화면 상단 alert가 보여 준다.
+                  } finally {
+                    // dialog는 fixed overlay라 열린 채로 두면 그 alert를 덮는다.
+                    setDialogOpen(false)
+                  }
+                }}
+              >
                 승인하고 실행 시작
               </Button>
             </>

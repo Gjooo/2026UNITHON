@@ -187,4 +187,27 @@ describe('실행 승인', () => {
     expect(screen.getByRole('region', { name: 'Agent 추천 실행안' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '실행 승인' })).toBeEnabled()
   })
+
+  it('closes_the_dialog_when_start_fails_so_the_error_is_readable', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.post('*/api/v1/jobs/:jobId/start', () =>
+        HttpResponse.json(demoBusy, { status: 409 }),
+      ),
+    )
+
+    await reachPlanReview(user)
+    await user.click(screen.getByRole('button', { name: '실행 승인' }))
+    const dialog = await screen.findByRole('dialog', { name: '실행 승인' })
+    await user.click(within(dialog).getByRole('button', { name: '승인하고 실행 시작' }))
+
+    // dialog는 fixed overlay라 열린 채로 두면 페이지의 오류 alert를 덮는다.
+    // 사용자 눈에는 버튼을 눌러도 아무 일도 일어나지 않은 것처럼 보인다.
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '지금은 다른 실행이 진행 중입니다',
+    )
+    // 계약은 남고 다시 승인할 수 있다.
+    expect(screen.getByRole('button', { name: '실행 승인' })).toBeEnabled()
+  })
 })

@@ -169,3 +169,35 @@ test('e2e_completes_the_contract_with_keyboard_only', async ({ page }) => {
   await expect(dialog).toBeHidden()
   await expect(page.getByRole('button', { name: '실행 승인' })).toBeFocused()
 })
+
+test('e2e_start_error_is_not_covered_by_the_dialog', async ({ page, request }) => {
+  await request.post('http://127.0.0.1:8787/__fake/busy', { data: { busy: true } })
+
+  await requestPlan(page, '10000', /균형/)
+  await page.getByRole('button', { name: '실행 승인' }).click()
+  await page
+    .getByRole('dialog', { name: '실행 승인' })
+    .getByRole('button', { name: '승인하고 실행 시작' })
+    .click()
+
+  const alert = page.getByRole('alert')
+  await expect(alert).toBeVisible()
+
+  // 페이지가 길다. 승인 버튼은 아래, 오류는 위에 있어 시야 밖에 나타날 수 있다.
+  await expect(alert).toBeInViewport()
+
+  // toBeVisible()은 다른 요소에 덮였는지 보지 않는다. dialog가 fixed overlay라
+  // 열린 채로 두면 alert가 화면에 있으면서도 보이지 않는다. 실제로 위에 있는
+  // 요소가 alert인지 좌표로 확인한다.
+  const stacking = await page.evaluate(() => {
+    const el = document.querySelector('[role="alert"]')
+    if (!el) return 'no-alert'
+    const r = el.getBoundingClientRect()
+    const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+    return top && el.contains(top) ? 'on-top' : 'covered'
+  })
+  expect(stacking, '오류 문구가 dialog에 덮이면 사용자는 아무 반응도 없다고 느낀다').toBe('on-top')
+
+  await expect(page.getByRole('button', { name: '실행 승인' })).toBeEnabled()
+  await request.post('http://127.0.0.1:8787/__fake/busy', { data: { busy: false } })
+})
