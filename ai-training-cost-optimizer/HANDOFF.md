@@ -11,8 +11,9 @@
 - 기준 문서: [../Backend-implementation-plan.md](../Backend-implementation-plan.md), [../API-spec.md](../API-spec.md), [../ERD.md](../ERD.md)
 - 코드 위치: `training_cost_optimizer/mvp/`, `training_cost_optimizer/providers/runpod_lifecycle.py`
 - 구현 완료: Loop 1~4(세션·추천 계약·원자적 승인·전체 생애주기·취소/실패/timeout), Loop 5의 Runpod 어댑터·환경변수 검증·운영 로그·smoke 명령, Loop 6의 CORS·로컬 통합 준비
-- 실제 키로 확인한 것(Pod 생성 없음, 비용 없음): REST API 인증 성공(`GET /v1/pods` 200, 활성 Pod 0개), 데모 GPU 프로필 3개가 모두 Runpod이 제공하는 GPU type임
-- 남은 작업: 공개 HTTPS `BACKEND_PUBLIC_BASE_URL` 확보, 실제 학습 이미지·실행 명령 교체, 그 뒤 `python -m training_cost_optimizer.mvp.smoke --confirm RUNPOD`(과금) 실행, 프런트엔드 화면 연동
+- 실제 키로 확인한 것(비용 없음): REST API 인증 성공, 데모 GPU 프로필 3개가 모두 Runpod이 제공하는 GPU type임
+- **실제 GPU 생애주기 검증 완료 (2026-08-26)**: RTX 4090 Pod를 실제로 만들어 `PROVISIONING(3초) → RUNNING(9초) → TERMINATING(45초) → COMPLETED(50초)`를 완주했다. Pod 안에서 보낸 완료 callback이 Cloudflare 터널을 거쳐 백엔드에 도달했고, 종료 확인 뒤 계정 활성 Pod는 0개였다. 로그에 API 키 노출 없음. 학습 이미지가 아직 없어 학습 대신 짧은 명령을 실행했다(`MVP_TRAINING_IMAGE`, `MVP_TRAINING_COMMAND` override)
+- 남은 작업: 학습 이미지를 레지스트리에 올리고 `MVP_TRAINING_IMAGE`로 지정, GPU에서 학습 스크립트 검증, 프런트엔드 화면 연동
 - 전체 테스트: `python -m pytest -q -p no:cacheprovider` → 116 passed (실제 Runpod 호출 없음)
 
 로컬 개발·리허설·smoke 명령은 [README.md](README.md)의 "제한된 실행 MVP" 절에 있다.
