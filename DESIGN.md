@@ -1,246 +1,171 @@
-# Design System Inspired by Spotify
+# UNWORK 디자인 시스템
 
-## 1. Visual Theme & Atmosphere
+> 활성 디자인 가이드. UI를 구현하기 전 이 문서와 원본 레퍼런스 [DESIGN_Spotify.md](DESIGN_Spotify.md), [DESIGN_Supabase.md](DESIGN_Supabase.md)를 함께 읽는다.
 
-Spotify's web interface is a dark, immersive music player that wraps listeners in a near-black cocoon (`#121212`, `#181818`, `#1f1f1f`) where album art and content become the primary source of color. The design philosophy is "content-first darkness" — the UI recedes into shadow so that music, podcasts, and playlists can glow. Every surface is a shade of charcoal, creating a theater-like environment where the only true color comes from the iconic Spotify Green (`#1ed760`) and the album artwork itself.
+## 1. 방향
 
-The typography uses SpotifyMixUI and SpotifyMixUITitle — proprietary fonts from the CircularSp family (Circular by Lineto, customized for Spotify) with an extensive fallback stack that includes Arabic, Hebrew, Cyrillic, Greek, Devanagari, and CJK fonts, reflecting Spotify's global reach. The type system is compact and functional: 700 (bold) for emphasis and navigation, 600 (semibold) for secondary emphasis, and 400 (regular) for body. Buttons use uppercase with positive letter-spacing (1.4px–2px) for a systematic, label-like quality.
+UNWORK는 AI 학습 실행 Agent를 위한 다크 운영 제품이다. 사용자는 GPU 콘솔을 다루는 대신 Agent의 추천 실행 계약을 검토하고, 실행 상태와 종료 확인을 신뢰해야 한다.
 
-What distinguishes Spotify is its pill-and-circle geometry. Primary buttons use 500px–9999px radius (full pill), circular play buttons use 50% radius, and search inputs are 500px pills. Combined with heavy shadows (`rgba(0,0,0,0.5) 0px 8px 24px`) on elevated elements and a unique inset border-shadow combo (`rgb(18,18,18) 0px 1px 0px, rgb(124,124,124) 0px 0px 0px 1px inset`), the result is an interface that feels like a premium audio device — tactile, rounded, and built for touch.
+- **Spotify에서 가져올 것**: near-black 작업 공간, 명확한 상태 대비, 제한된 녹색 CTA, 몰입형 실행 추적 화면.
+- **Supabase에서 가져올 것**: 기술 제품의 정보 구조, 정돈된 form·table·code block, 절제된 테두리와 명료한 데이터 표시.
+- **UNWORK의 결정**: 기본 canvas는 어둡게 유지하고, 계약·후보 비교는 Supabase처럼 읽기 쉽게 구성한다. 장식적 이미지·그라디언트·다색 브랜드 요소는 사용하지 않는다.
 
-**Key Characteristics:**
-- Near-black immersive dark theme (`#121212`–`#1f1f1f`) — UI disappears behind content
-- Spotify Green (`#1ed760`) as singular brand accent — never decorative, always functional
-- SpotifyMixUI/CircularSp font family with global script support
-- Pill buttons (500px–9999px) and circular controls (50%) — rounded, touch-optimized
-- Uppercase button labels with wide letter-spacing (1.4px–2px)
-- Heavy shadows on elevated elements (`rgba(0,0,0,0.5) 0px 8px 24px`)
-- Semantic colors: negative red (`#f3727f`), warning orange (`#ffa42b`), announcement blue (`#539df5`)
-- Album art as the primary color source — the UI is achromatic by design
+## 2. 핵심 원칙
 
-## 2. Color Palette & Roles
+1. **계약이 주인공이다.** GPU·비용·시간·상태를 가장 읽기 쉽게 보여 주며, 장식이 정보를 앞서지 않는다.
+2. **녹색은 행동과 정상 상태에만 쓴다.** primary CTA, 추천됨, 정상 실행/완료 외에는 채우기 색으로 사용하지 않는다.
+3. **사용자는 선택하지 않고 승인한다.** GPU 수동 선택, Provider 설정, SSH/CUDA/Pod 제어 UI를 만들지 않는다.
+4. **종료 확인 전에는 완료가 아니다.** `TERMINATING`은 항상 별도 진행 상태로 보인다.
+5. **기술적이되 콘솔이 아니다.** 로그·exit code만 mono로 제공하고, raw Provider ID·API key·Pod ID는 노출하지 않는다.
 
-### Primary Brand
-- **Spotify Green** (`#1ed760`): Primary brand accent — play buttons, active states, CTAs
-- **Near Black** (`#121212`): Deepest background surface
-- **Dark Surface** (`#181818`): Cards, containers, elevated surfaces
-- **Mid Dark** (`#1f1f1f`): Button backgrounds, interactive surfaces
+## 3. 디자인 토큰
 
-### Text
-- **White** (`#ffffff`): `--text-base`, primary text
-- **Silver** (`#b3b3b3`): Secondary text, muted labels, inactive nav
-- **Near White** (`#cbcbcb`): Slightly brighter secondary text
-- **Light** (`#fdfdfd`): Near-pure white for maximum emphasis
+```css
+:root {
+  --canvas: #121212;
+  --surface: #181818;
+  --surface-raised: #1f1f1f;
+  --surface-code: #1c1c1c;
+  --surface-hover: #272727;
 
-### Semantic
-- **Negative Red** (`#f3727f`): `--text-negative`, error states
-- **Warning Orange** (`#ffa42b`): `--text-warning`, warning states
-- **Announcement Blue** (`#539df5`): `--text-announcement`, info states
+  --text: #ffffff;
+  --text-secondary: #b3b3b3;
+  --text-tertiary: #9a9a9a;
+  --on-primary: #171717;
 
-### Surface & Border
-- **Dark Card** (`#252525`): Elevated card surface
-- **Mid Card** (`#272727`): Alternate card surface
-- **Border Gray** (`#4d4d4d`): Button borders on dark
-- **Light Border** (`#7c7c7c`): Outlined button borders, muted links
-- **Separator** (`#b3b3b3`): Divider lines
-- **Light Surface** (`#eeeeee`): Light-mode buttons (rare)
-- **Spotify Green Border** (`#1db954`): Green accent border variant
+  --primary: #3ecf8e;
+  --primary-pressed: #24b47e;
+  --info: #539df5;
+  --warning: #ffa42b;
+  --danger: #f3727f;
 
-### Shadows
-- **Heavy** (`rgba(0,0,0,0.5) 0px 8px 24px`): Dialogs, menus, elevated panels
-- **Medium** (`rgba(0,0,0,0.3) 0px 8px 8px`): Cards, dropdowns
-- **Inset Border** (`rgb(18,18,18) 0px 1px 0px, rgb(124,124,124) 0px 0px 0px 1px inset`): Input border-shadow combo
+  --border: #4d4d4d;
+  --border-strong: #7c7c7c;
+  --shadow-raised: 0 8px 8px rgba(0, 0, 0, .3);
+  --shadow-dialog: 0 8px 24px rgba(0, 0, 0, .5);
 
-## 3. Typography Rules
+  --radius-control: 6px;
+  --radius-card: 12px;
+  --radius-dialog: 16px;
+  --radius-pill: 9999px;
 
-### Font Families
-- **Title**: `SpotifyMixUITitle`, fallbacks: `CircularSp-Arab, CircularSp-Hebr, CircularSp-Cyrl, CircularSp-Grek, CircularSp-Deva, Helvetica Neue, helvetica, arial, Hiragino Sans, Hiragino Kaku Gothic ProN, Meiryo, MS Gothic`
-- **UI / Body**: `SpotifyMixUI`, same fallback stack
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 64px;
 
-### Hierarchy
+  --font-sans: Inter, Pretendard, "Noto Sans KR", system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+```
 
-| Role | Font | Size | Weight | Line Height | Letter Spacing | Notes |
-|------|------|------|--------|-------------|----------------|-------|
-| Section Title | SpotifyMixUITitle | 24px (1.50rem) | 700 | normal | normal | Bold title weight |
-| Feature Heading | SpotifyMixUI | 18px (1.13rem) | 600 | 1.30 (tight) | normal | Semibold section heads |
-| Body Bold | SpotifyMixUI | 16px (1.00rem) | 700 | normal | normal | Emphasized text |
-| Body | SpotifyMixUI | 16px (1.00rem) | 400 | normal | normal | Standard body |
-| Button Uppercase | SpotifyMixUI | 14px (0.88rem) | 600–700 | 1.00 (tight) | 1.4px–2px | `text-transform: uppercase` |
-| Button | SpotifyMixUI | 14px (0.88rem) | 700 | normal | 0.14px | Standard button |
-| Nav Link Bold | SpotifyMixUI | 14px (0.88rem) | 700 | normal | normal | Navigation |
-| Nav Link | SpotifyMixUI | 14px (0.88rem) | 400 | normal | normal | Inactive nav |
-| Caption Bold | SpotifyMixUI | 14px (0.88rem) | 700 | 1.50–1.54 | normal | Bold metadata |
-| Caption | SpotifyMixUI | 14px (0.88rem) | 400 | normal | normal | Metadata |
-| Small Bold | SpotifyMixUI | 12px (0.75rem) | 700 | 1.50 | normal | Tags, counts |
-| Small | SpotifyMixUI | 12px (0.75rem) | 400 | normal | normal | Fine print |
-| Badge | SpotifyMixUI | 10.5px (0.66rem) | 600 | 1.33 | normal | `text-transform: capitalize` |
-| Micro | SpotifyMixUI | 10px (0.63rem) | 400 | normal | normal | Smallest text |
+`#3ecf8e` 하나만 primary green으로 사용한다. Supabase의 on-primary 원칙에 따라 녹색 버튼 위 텍스트는 흰색이 아니라 `#171717`이다.
 
-### Principles
-- **Bold/regular binary**: Most text is either 700 (bold) or 400 (regular), with 600 used sparingly. This creates a clear visual hierarchy through weight contrast rather than size variation.
-- **Uppercase buttons as system**: Button labels use uppercase + wide letter-spacing (1.4px–2px), creating a systematic "label" voice distinct from content text.
-- **Compact sizing**: The range is 10px–24px — narrower than most systems. Spotify's type is compact and functional, designed for scanning playlists, not reading articles.
-- **Global script support**: The extensive fallback stack (Arabic, Hebrew, Cyrillic, Greek, Devanagari, CJK) reflects Spotify's 180+ market reach.
+## 4. 타이포그래피
 
-## 4. Component Stylings
+| 용도 | 크기 / 굵기 / 행간 | 규칙 |
+| --- | --- | --- |
+| Page display | 36px / 500 / 1.15 | `letter-spacing: -0.72px`; 768px 미만은 28px |
+| Section title | 24px / 700 / 1.2 | 계약·결과의 주요 제목 |
+| Card heading | 18px / 600 / 1.3 | 추천 카드·상태 섹션 |
+| Body | 16px / 400 / 1.5 | 기본 설명과 폼 label |
+| Caption | 13px / 400 / 1.45 | 추정값 안내·부가 정보 |
+| Button | 14px / 600 / 1 | 일반 버튼은 sentence case, 승인 CTA는 필요 시 uppercase + 1.4px tracking |
+| Code | 14px / 400 / 1.5 | completion log·exit code에만 mono |
+
+숫자·금액·시간은 tabular numeral을 우선 사용해 비교 표의 열이 흔들리지 않게 한다. 작은 muted text를 핵심 비용·상태 정보에 사용하지 않는다.
+
+## 5. 컴포넌트 규칙
 
 ### Buttons
 
-**Dark Pill**
-- Background: `#1f1f1f`
-- Text: `#ffffff` or `#b3b3b3`
-- Padding: 8px 16px
-- Radius: 9999px (full pill)
-- Use: Navigation pills, secondary actions
+- **Primary approval**: `--primary`, `--on-primary`, full pill, 최소 44px 높이. 한 viewport에서 하나만 둔다.
+- **Secondary**: `--surface-raised`, white text, 6px radius. 제약 수정, 다시 비교에 사용한다.
+- **Destructive**: 투명 또는 dark surface + `--danger` outline. 중단은 항상 확인 dialog를 거친다.
+- **Disabled**: opacity만으로 의미를 전달하지 않고, 이유 텍스트 또는 helper를 함께 제공한다.
 
-**Dark Large Pill**
-- Background: `#181818`
-- Text: `#ffffff`
-- Padding: 0px 43px
-- Radius: 500px
-- Use: Primary app navigation buttons
+### Inputs and priority cards
 
-**Light Pill**
-- Background: `#eeeeee`
-- Text: `#181818`
-- Radius: 500px
-- Use: Light-mode CTAs (cookie consent, marketing)
+- 숫자 입력은 6px radius, 1px `--border`, 44px 이상 높이, focus-visible outline을 가진다.
+- 우선순위는 radio semantics를 가진 세 장의 compact card로 만든다. 선택됨은 primary border와 check icon, 텍스트로 모두 표시한다.
+- GPU selector, provider selector, hidden advanced form은 제공하지 않는다.
 
-**Outlined Pill**
-- Background: transparent
-- Text: `#ffffff`
-- Border: `1px solid #7c7c7c`
-- Padding: 4px 16px 4px 36px (asymmetric for icon)
-- Radius: 9999px
-- Use: Follow buttons, secondary actions
+### Cards, tables, and code
 
-**Circular Play**
-- Background: `#1f1f1f`
-- Text: `#ffffff`
-- Padding: 12px
-- Radius: 50% (circle)
-- Use: Play/pause controls
+- 추천 실행안은 `--surface-raised` 카드와 subtle shadow를 사용한다. 추천 badge에만 green을 쓴다.
+- 후보 비교는 desktop table, mobile stacked card다. 항목 순서는 GPU → 예상 시간 → 예상 GPU 비용 → 예산 적합 여부 → 추천 여부로 고정한다.
+- `OVER_BUDGET`은 warning icon·텍스트와 함께 보여 주며, 흐리게 숨기지 않는다.
+- log·명령·exit code는 `--surface-code` mono block에 넣되, code block을 장식으로 쓰지 않는다.
 
-### Cards & Containers
-- Background: `#181818` or `#1f1f1f`
-- Radius: 6px–8px
-- No visible borders on most cards
-- Hover: slight background lightening
-- Shadow: `rgba(0,0,0,0.3) 0px 8px 8px` on elevated
+### Dialogs and notices
 
-### Inputs
-- Search input: `#1f1f1f` background, `#ffffff` text
-- Radius: 500px (pill)
-- Padding: 12px 96px 12px 48px (icon-aware)
-- Focus: border becomes `#000000`, outline `1px solid`
+- 승인·중단 확인은 `--surface`와 `--shadow-dialog`을 사용하는 16px dialog다.
+- dialog에는 선택 GPU, 예상 시간·비용, 비용·중단의 결과를 평문으로 다시 보여 준다.
+- info/warning/error notice는 blue/orange/red과 아이콘·제목·다음 행동을 함께 제공한다.
 
-### Navigation
-- Dark sidebar with SpotifyMixUI 14px weight 700 for active, 400 for inactive
-- `#b3b3b3` muted color for inactive items, `#ffffff` for active
-- Circular icon buttons (50% radius)
-- Spotify logo top-left in green
+## 6. 화면 구성
 
-## 5. Layout Principles
+### 제약 입력
 
-### Spacing System
-- Base unit: 8px
-- Scale: 1px, 2px, 3px, 4px, 5px, 6px, 8px, 10px, 12px, 14px, 15px, 16px, 20px
+- 화면 상단에는 `UNWORK`, `MVP · SD 1.5 LoRA` 배지, 익명 세션 상태만 둔다.
+- 사용자는 최대 예산과 `저비용`·`균형`·`빠른 완료`만 입력한다.
+- 고정 시나리오(Stable Diffusion 1.5 LoRA, 24GB VRAM, 최대 10분)는 읽기 전용으로 설명한다.
 
-### Grid & Container
-- Sidebar (fixed) + main content area
-- Grid-based album/playlist cards
-- Full-width now-playing bar at bottom
-- Responsive content area fills remaining space
+### 실행 계약 검토
 
-### Whitespace Philosophy
-- **Dark compression**: Spotify packs content densely — playlist grids, track lists, and navigation are all tightly spaced. The dark background provides visual rest between elements without needing large gaps.
-- **Content density over breathing room**: This is an app, not a marketing site. Every pixel serves the listening experience.
+- desktop: 12-column grid, 좌측 4 columns 제약 요약, 우측 8 columns 추천·비교.
+- 가장 위에는 선택 GPU, Provider, 예상 시간, 예상 GPU 비용, 추천 근거를 둔다.
+- `DEMO_SNAPSHOT`과 실제 비용을 보장하지 않는다는 문구는 계약 안에서 항상 보인다.
+- GPU를 변경할 수 있는 버튼은 만들지 않는다. CTA는 `실행 승인`, secondary는 `제약 수정`이다.
 
-### Border Radius Scale
-- Minimal (2px): Badges, explicit tags
-- Subtle (4px): Inputs, small elements
-- Standard (6px): Album art containers, cards
-- Comfortable (8px): Sections, dialogs
-- Medium (10px–20px): Panels, overlay elements
-- Large (100px): Large pill buttons
-- Pill (500px): Primary buttons, search input
-- Full Pill (9999px): Navigation pills, search
-- Circle (50%): Play buttons, avatars, icons
+### 실행 추적과 결과
 
-## 6. Depth & Elevation
+- `PROVISIONING → RUNNING → TERMINATING → final` 단계 진행 UI를 사용한다.
+- `TERMINATING`에서는 “Pod 자동 종료를 확인하고 있어요”를 표시하며 최종 결과 색·문구를 앞당기지 않는다.
+- 완료 결과에는 completion log, exit code, 실행 시간, 선택 GPU, Pod 종료 확인을 제공한다.
+- 실패/중단 결과에는 안전한 원인과 종료 결과를 제공한다. 비용 또는 재시도 가능성을 추정해 말하지 않는다.
 
-| Level | Treatment | Use |
-|-------|-----------|-----|
-| Base (Level 0) | `#121212` background | Deepest layer, page background |
-| Surface (Level 1) | `#181818` or `#1f1f1f` | Cards, sidebar, containers |
-| Elevated (Level 2) | `rgba(0,0,0,0.3) 0px 8px 8px` | Dropdown menus, hover cards |
-| Dialog (Level 3) | `rgba(0,0,0,0.5) 0px 8px 24px` | Modals, overlays, menus |
-| Inset (Border) | `rgb(18,18,18) 0px 1px 0px, rgb(124,124,124) 0px 0px 0px 1px inset` | Input borders |
+## 7. 상태 색상
 
-**Shadow Philosophy**: Spotify uses notably heavy shadows for a dark-themed app. The 0.5 opacity shadow at 24px blur creates a dramatic "floating in darkness" effect for dialogs and menus, while the 0.3 opacity at 8px blur provides a more subtle card lift. The unique inset border-shadow combination on inputs creates a recessed, tactile quality.
+| 의미 | 색상 | 보조 표현 |
+| --- | --- | --- |
+| 추천 / 실행 중 / 완료 | `--primary` | check 또는 active 상태 icon과 텍스트 |
+| 세션 / 데모 스냅샷 안내 | `--info` | info icon과 설명 |
+| 예산 초과 / 종료 확인 대기 | `--warning` | warning icon과 다음 상태 설명 |
+| 실패 / 중단 확인 | `--danger` | error icon과 action |
 
-## 7. Do's and Don'ts
+색상만으로 적합성·실행 결과를 구분하지 않는다. 모든 상태 badge는 icon 또는 label을 함께 가져야 한다.
+
+## 8. 반응형과 접근성
+
+| Viewport | 구성 |
+| --- | --- |
+| ≥ 1024px | 최대 1180px container, 계약 검토 4:8 column |
+| 768–1023px | 모든 주요 섹션 단일 열, 표는 우선순위 유지 |
+| < 768px | 후보 card stack, 승인·중단 CTA sticky bottom bar |
+
+- 모든 interactive control은 44×44px 이상의 hit target을 가진다.
+- radio card, dialog, error message는 키보드로 완전히 사용 가능해야 한다.
+- dialog는 focus trap·Escape·trigger focus 복귀를 제공한다.
+- polling state update는 `aria-live="polite"`로 요약만 알리고 focus를 빼앗지 않는다.
+- WCAG AA 대비를 유지하며, hover-only 정보나 가로 스크롤 표에 의존하지 않는다.
+
+## 9. Do / Don't
 
 ### Do
-- Use near-black backgrounds (`#121212`–`#1f1f1f`) — depth through shade variation
-- Apply Spotify Green (`#1ed760`) only for play controls, active states, and primary CTAs
-- Use pill shape (500px–9999px) for all buttons — circular (50%) for play controls
-- Apply uppercase + wide letter-spacing (1.4px–2px) on button labels
-- Keep typography compact (10px–24px range) — this is an app, not a magazine
-- Use heavy shadows (`0.3–0.5 opacity`) for elevated elements on dark backgrounds
-- Let album art provide color — the UI itself is achromatic
+
+- dark canvas와 layer 차이로 깊이를 만든다.
+- 정보가 많은 계약·비교 화면은 Supabase처럼 테이블과 hairline을 절제해 정리한다.
+- 단일 emerald를 의도적으로, 기능적인 위치에만 사용한다.
+- 로그·상태·비용의 정확한 문구를 우선하고 화려한 시각 효과를 피한다.
 
 ### Don't
-- Don't use Spotify Green decoratively or on backgrounds — it's functional only
-- Don't use light backgrounds for primary surfaces — the dark immersion is core
-- Don't skip the pill/circle geometry on buttons — square buttons break the identity
-- Don't use thin/subtle shadows — on dark backgrounds, shadows need to be heavy to be visible
-- Don't add additional brand colors — green + achromatic grays is the complete palette
-- Don't use relaxed line-heights — Spotify's typography is compact and dense
-- Don't expose raw gray borders — use shadow-based or inset borders instead
 
-## 8. Responsive Behavior
-
-### Breakpoints
-| Name | Width | Key Changes |
-|------|-------|-------------|
-| Mobile Small | <425px | Compact mobile layout |
-| Mobile | 425–576px | Standard mobile |
-| Tablet | 576–768px | 2-column grid |
-| Tablet Large | 768–896px | Expanded layout |
-| Desktop Small | 896–1024px | Sidebar visible |
-| Desktop | 1024–1280px | Full desktop layout |
-| Large Desktop | >1280px | Expanded grid |
-
-### Collapsing Strategy
-- Sidebar: full → collapsed → hidden
-- Album grid: 5 columns → 3 → 2 → 1
-- Now-playing bar: maintained at all sizes
-- Search: pill input maintained, width adjusts
-- Navigation: sidebar → bottom bar on mobile
-
-## 9. Agent Prompt Guide
-
-### Quick Color Reference
-- Background: Near Black (`#121212`)
-- Surface: Dark Card (`#181818`)
-- Text: White (`#ffffff`)
-- Secondary text: Silver (`#b3b3b3`)
-- Accent: Spotify Green (`#1ed760`)
-- Border: `#4d4d4d`
-- Error: Negative Red (`#f3727f`)
-
-### Example Component Prompts
-- "Create a dark card: #181818 background, 8px radius. Title at 16px SpotifyMixUI weight 700, white text. Subtitle at 14px weight 400, #b3b3b3. Shadow rgba(0,0,0,0.3) 0px 8px 8px on hover."
-- "Design a pill button: #1f1f1f background, white text, 9999px radius, 8px 16px padding. 14px SpotifyMixUI weight 700, uppercase, letter-spacing 1.4px."
-- "Build a circular play button: Spotify Green (#1ed760) background, #000000 icon, 50% radius, 12px padding."
-- "Create search input: #1f1f1f background, white text, 500px radius, 12px 48px padding. Inset border: rgb(124,124,124) 0px 0px 0px 1px inset."
-- "Design navigation sidebar: #121212 background. Active items: 14px weight 700, white. Inactive: 14px weight 400, #b3b3b3."
-
-### Iteration Guide
-1. Start with #121212 — everything lives in near-black darkness
-2. Spotify Green for functional highlights only (play, active, CTA)
-3. Pill everything — 500px for large, 9999px for small, 50% for circular
-4. Uppercase + wide tracking on buttons — the systematic label voice
-5. Heavy shadows (0.3–0.5 opacity) for elevation — light shadows are invisible on dark
-6. Album art provides all the color — the UI stays achromatic
+- white/light canvas, atmospheric gradient, album art, 장식용 일러스트를 추가하지 않는다.
+- 여러 accent color, green background section, white text on primary green을 사용하지 않는다.
+- 모든 버튼을 pill로 만들지 않는다. pill은 승인 CTA·status badge에 한정한다.
+- Spotify/Supabase 로고·상표·proprietary font를 제품 자산으로 사용하지 않는다.
+- 완료 확인 전 `COMPLETED`, `FAILED`, `CANCELLED` 화면을 표시하지 않는다.
