@@ -1,10 +1,18 @@
 """Documented FastAPI surface with stable frontend-oriented responses."""
 
+import logging
 import os
+from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+
+from .mvp.config import get_settings as get_mvp_settings
+from .mvp.domain import MvpServiceError
+from .mvp.router import router as mvp_router
+from .providers.runpod_lifecycle import RunpodRestLifecycleProvider
 
 from .models import (APIErrorResponse, BudgetSummary, ExecutionPlan, GPU,
     OptimizeAPIResponse, PricingSummary, RecommendationResult,
@@ -12,15 +20,52 @@ from .models import (APIErrorResponse, BudgetSummary, ExecutionPlan, GPU,
 from .planning import create_execution_plan
 from .service import OptimizationService
 
+logger = logging.getLogger(__name__)
+
 ERROR_RESPONSES = {
     422: {"model": APIErrorResponse, "description": "Request, workload, budget, or compatibility error"},
     503: {"model": APIErrorResponse, "description": "No GPU provider is available"},
     500: {"model": APIErrorResponse, "description": "Unexpected internal error"},
 }
 
+
+def configure_logging() -> None:
+    """Make the MVP operational logs visible.
+
+    Uvicorn configures only its own loggers, so without this the lifecycle
+    logs this service emits would never reach the deployment's output.
+    """
+
+    if not logging.getLogger().handlers:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s %(levelname)s %(name)s %(message)s",
+        )
+    logging.getLogger("training_cost_optimizer").setLevel(
+        os.getenv("LOG_LEVEL", "INFO").upper()
+    )
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """Surface a misconfigured MVP deployment at boot, not mid-demo."""
+
+    configure_logging()
+    settings = get_mvp_settings()
+    logger.info(
+        "MVP configuration: provider_mode=%s max_runtime_minutes=%s",
+        settings.provider_mode,
+        settings.max_runtime_minutes,
+    )
+    if settings.provider_mode == "runpod":
+        RunpodRestLifecycleProvider.from_environment()
+    yield
+
+
 app = FastAPI(
     title="AI Training Cost Optimizer", version="0.3.0",
     description="Estimate workload requirements and recommend the lowest projected total charge. No GPU is provisioned.",
+    lifespan=lifespan,
 )
 
 DEFAULT_FRONTEND_ORIGINS = (
@@ -32,16 +77,27 @@ DEFAULT_FRONTEND_ORIGINS = (
 
 
 def frontend_origins() -> list[str]:
+    """Return an explicit origin allowlist.
+
+    The MVP sends the anonymous-session cookie cross-origin, so a wildcard
+    origin is both rejected by browsers and unsafe. It is dropped here instead
+    of being forwarded to the CORS middleware.
+    """
+
     configured = os.getenv("FRONTEND_ORIGINS")
     if not configured:
         return list(DEFAULT_FRONTEND_ORIGINS)
-    return [origin.strip() for origin in configured.split(",") if origin.strip()]
+    origins = [origin.strip() for origin in configured.split(",") if origin.strip()]
+    allowed = [origin for origin in origins if origin != "*"]
+    if len(allowed) != len(origins):
+        logger.warning("Ignoring wildcard FRONTEND_ORIGINS entry: credentialed CORS needs exact origins.")
+    return allowed
 
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=frontend_origins(),
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
@@ -60,12 +116,24 @@ def api_error_handler(request: Request, exc: APIError) -> JSONResponse:
 
 @app.exception_handler(RequestValidationError)
 def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    if request.url.path.startswith("/api/v1/"):
+        return JSONResponse(status_code=400, content={"error": {
+            "code": "VALIDATION_ERROR", "message": "요청 형식이 올바르지 않습니다."
+        }})
     return JSONResponse(status_code=422, content={"error": {"code": "INVALID_REQUEST", "message": "Request validation failed.", "details": {"errors": exc.errors()}}})
 
 
 @app.exception_handler(Exception)
 def internal_error_handler(request: Request, exc: Exception) -> JSONResponse:
     return JSONResponse(status_code=500, content={"error": {"code": "INTERNAL_ERROR", "message": "An unexpected internal error occurred.", "details": {}}})
+
+
+@app.exception_handler(MvpServiceError)
+def mvp_service_error_handler(request: Request, exc: MvpServiceError) -> JSONResponse:
+    return JSONResponse(status_code=exc.status_code, content={"error": {
+        "code": exc.code,
+        "message": exc.message,
+    }})
 
 
 def get_service() -> OptimizationService:
@@ -159,3 +227,6 @@ def plan(request: TrainingRequest, service: OptimizationService = Depends(get_se
     result = service.optimize(request)
     _raise_for_result(result)
     return create_execution_plan(result)
+
+
+app.include_router(mvp_router)
