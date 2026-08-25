@@ -4,8 +4,13 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-1);
   display: grid;
-  gap: var(--space-lg);
+  gap: var(--space-xl);
   padding: var(--space-xxl);
+}
+
+.head {
+  display: grid;
+  gap: var(--space-sm);
 }
 
 .title {
@@ -16,4 +21,124 @@
 
 .gpu {
   color: var(--ink-mute);
+  font-size: 13px;
+}
+
+.steps {
+  display: grid;
+  gap: var(--space-md);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.step {
+  align-items: baseline;
+  display: flex;
+  gap: var(--space-md);
+}
+
+.marker {
+  border-radius: var(--radius-full);
+  flex: none;
+  height: 8px;
+  position: relative;
+  top: 6px;
+  width: 8px;
+}
+
+.markerDone {
+  background: var(--primary);
+}
+
+.markerActive {
+  background: var(--primary);
+  box-shadow: 0 0 0 4px rgba(62, 207, 142, 0.25);
+}
+
+.markerPending {
+  background: var(--hairline-strong);
+}
+
+.stepLabel {
+  font-weight: 500;
+}
+
+.stepState {
+  color: var(--ink-mute);
+  font-size: 13px;
+  margin-left: var(--space-sm);
+}
+
+.figures {
+  display: grid;
+  gap: var(--space-lg);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 420px;
+}
+
+.figures dt {
+  color: var(--ink-mute);
+  font-size: 13px;
+  margin-bottom: var(--space-xs);
+}
+
+.figures dd {
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.cap {
+  color: var(--ink-mute);
+  font-size: 13px;
+}
+
+.cancel {
+  background: var(--canvas);
+  border: 1px solid var(--status-danger);
+  border-radius: var(--radius-sm);
+  color: var(--status-danger);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  justify-self: start;
+  line-height: 1;
+  padding: var(--space-md) var(--space-lg);
+}
+
+.cancel:disabled {
+  border-color: var(--hairline);
+  color: var(--ink-faint);
+  cursor: not-allowed;
+}
+
+.dialogDanger {
+  background: var(--status-danger);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--on-dark);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  padding: var(--space-md) var(--space-lg);
+}
+
+.dialogSecondary {
+  background: var(--canvas);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  padding: var(--space-md) var(--space-lg);
+}
+
+@media (max-width: 767px) {
+  .figures {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

@@ -86,3 +86,12 @@ export interface JobMutationResponse {
 export function startJob(jobId: string, signal?: AbortSignal): Promise<JobMutationResponse> {
   return apiFetch<JobMutationResponse>(`/jobs/${jobId}/start`, { method: 'POST', signal })
 }
+
+export function getJob(jobId: string, signal?: AbortSignal): Promise<TrainingJob> {
+  return apiFetch<TrainingJob>(`/jobs/${jobId}`, { signal })
+}
+
+/** 중단을 요청한다. 서버가 자원 종료를 확인해야 최종 상태가 된다. */
+export function cancelJob(jobId: string, signal?: AbortSignal): Promise<JobMutationResponse> {
+  return apiFetch<JobMutationResponse>(`/jobs/${jobId}/cancel`, { method: 'POST', signal })
+}

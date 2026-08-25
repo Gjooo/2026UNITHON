@@ -8,7 +8,7 @@
     "maxRuntimeMinutes": 10
   },
   "constraint": {
-    "maxBudgetKrw": 500,
+    "maxBudgetKrw": 1000,
     "priority": "FASTEST"
   },
   "executionPlan": {
@@ -30,7 +30,7 @@
         "gpuType": "NVIDIA L40S",
         "estimatedRuntimeMinutes": 7,
         "estimatedGpuCostKrw": 650,
-        "eligibility": "OVER_BUDGET"
+        "eligibility": "ELIGIBLE"
       },
       {
         "profileId": "runpod-a100-v1",
@@ -38,23 +38,23 @@
         "gpuType": "NVIDIA A100 40GB",
         "estimatedRuntimeMinutes": 5,
         "estimatedGpuCostKrw": 900,
-        "eligibility": "OVER_BUDGET"
+        "eligibility": "ELIGIBLE"
       }
     ],
     "recommended": {
-      "profileId": "runpod-rtx4090-v1",
+      "profileId": "runpod-a100-v1",
       "provider": "Runpod",
-      "gpuType": "NVIDIA RTX 4090",
-      "estimatedRuntimeMinutes": 10,
-      "estimatedGpuCostKrw": 450,
+      "gpuType": "NVIDIA A100 40GB",
+      "estimatedRuntimeMinutes": 5,
+      "estimatedGpuCostKrw": 900,
       "reason": "예산 안 후보 중 예상 실행시간이 가장 짧습니다."
     }
   },
-  "status": "DRAFT",
+  "status": "CANCELLED",
   "failureMessage": null,
   "exitCode": null,
   "completionLog": null,
-  "startedAt": null,
-  "finishedAt": null,
-  "podTerminatedAt": null
+  "startedAt": "2026-08-25T19:40:50.515266Z",
+  "finishedAt": "2026-08-25T19:40:55.526536Z",
+  "podTerminatedAt": "2026-08-25T19:40:55.526536Z"
 }

@@ -1,8 +1,7 @@
 import { useState } from 'react'
-import type { TrainingJob } from '@/api/jobs'
 import { useSession } from '@/hooks/useSession'
 import { useCreateJob } from '@/hooks/useCreateJob'
-import { useStartJob } from '@/hooks/useStartJob'
+import { useCancelJob, useJob, useStartJob } from '@/hooks/useJob'
 import { ConstraintForm } from '@/features/training/ConstraintForm'
 import { ExecutionPlanReview } from '@/features/training/ExecutionPlanReview'
 import { ApprovalPanel } from '@/features/training/ApprovalPanel'
@@ -33,12 +32,14 @@ function SessionStatus() {
 
 export function App() {
   const session = useSession()
-  const [job, setJob] = useState<TrainingJob | null>(null)
+  const [jobId, setJobId] = useState<string | null>(null)
 
-  const createJob = useCreateJob(setJob)
-  const startJob = useStartJob((response) =>
-    setJob((current) => (current ? { ...current, status: response.status } : current)),
-  )
+  const createJob = useCreateJob((created) => setJobId(created.id))
+  const startJob = useStartJob()
+  const cancelJob = useCancelJob()
+
+  // 서버 Job이 화면의 source of truth다. mutation 응답으로 상태를 추정하지 않는다.
+  const job = useJob(jobId).data ?? null
 
   const allowance = session.data?.executionAllowance
   const canStart = !allowance || allowance.used < allowance.limit
@@ -46,9 +47,18 @@ export function App() {
   if (job && job.status !== 'DRAFT') {
     return (
       <Shell>
-        <h1 className={styles.pageTitle}>학습을 실행하고 있어요</h1>
+        <h1 className={styles.pageTitle}>실행 상태</h1>
         <div className={styles.content}>
-          <JobTracker job={job} />
+          {cancelJob.isError && (
+            <p className={styles.formAlert} role="alert">
+              {toUserMessage(cancelJob.error)}
+            </p>
+          )}
+          <JobTracker
+            job={job}
+            isCancelling={cancelJob.isPending}
+            onCancel={() => cancelJob.mutate(job.id)}
+          />
         </div>
       </Shell>
     )
@@ -74,7 +84,7 @@ export function App() {
               canStart={canStart}
               isStarting={startJob.isPending}
               onApprove={() => startJob.mutate(job.id)}
-              onEditConstraints={() => setJob(null)}
+              onEditConstraints={() => setJobId(null)}
             />
           </div>
         </div>
