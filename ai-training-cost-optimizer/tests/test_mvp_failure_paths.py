@@ -73,7 +73,7 @@ def test_pod_creation_error_fails_without_a_delete_request(tmp_path):
 
         job = harness.client.get(f"/api/v1/jobs/{job_id}").json()
         assert job["status"] == "FAILED"
-        assert job["failureMessage"] == "Pod 생성에 실패했습니다."
+        assert job["failureMessage"] == "실행 환경을 만들지 못했습니다."
         assert harness.repository.get_job(job_id).runpod_pod_id is None
         # There is no provider resource yet, so cleanup must not be attempted.
         assert harness.provider.deleted_pod_ids == []
@@ -98,7 +98,7 @@ def test_pod_provisioning_failure_deletes_pod_and_becomes_failed(tmp_path):
         harness.worker.run_once(job_id)
         job = harness.client.get(f"/api/v1/jobs/{job_id}").json()
         assert job["status"] == "FAILED"
-        assert job["failureMessage"] == "Pod provisioning에 실패했습니다."
+        assert job["failureMessage"] == "실행 환경 준비에 실패했습니다."
     finally:
         app.dependency_overrides.clear()
 

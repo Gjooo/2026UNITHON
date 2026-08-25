@@ -91,7 +91,7 @@ class JobLifecycleWorker:
                     )
                     return self.repository.fail_before_pod(
                         job_id=job.id,
-                        failure_message="Pod 생성에 실패했습니다.",
+                        failure_message="실행 환경을 만들지 못했습니다.",
                         finished_at=now,
                     ).status
                 logger.info(
@@ -105,7 +105,7 @@ class JobLifecycleWorker:
                 return self.repository.request_termination(
                     job_id=job.id,
                     requested_final_status=MvpJobStatus.FAILED,
-                    failure_message="Pod 상태를 확인할 수 없습니다.",
+                    failure_message="실행 환경 상태를 확인하지 못했습니다.",
                 ).status
             if pod_status is PodStatus.RUNNING:
                 logger.info("job=%s pod=%s is RUNNING", job.id, job.runpod_pod_id)
@@ -115,7 +115,7 @@ class JobLifecycleWorker:
                 return self.repository.request_termination(
                     job_id=job.id,
                     requested_final_status=MvpJobStatus.FAILED,
-                    failure_message="Pod provisioning에 실패했습니다.",
+                    failure_message="실행 환경 준비에 실패했습니다.",
                 ).status
             return job.status
 
@@ -130,7 +130,7 @@ class JobLifecycleWorker:
             except Exception as exc:
                 logger.error("job=%s pod=%s termination failed: %s", job.id, job.runpod_pod_id, exc)
                 self.repository.record_termination_error(
-                    job_id=job.id, failure_message="Pod 종료를 확인할 수 없습니다."
+                    job_id=job.id, failure_message="GPU 종료를 확인하지 못했습니다."
                 )
                 return job.status
             if pod_status is PodStatus.TERMINATED:

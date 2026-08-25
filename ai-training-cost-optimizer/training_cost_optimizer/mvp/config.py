@@ -9,11 +9,12 @@ from pathlib import Path
 
 SESSION_COOKIE_NAME = "unwork_session"
 SESSION_TTL_DAYS = 7
+SESSION_EXECUTION_LIMIT = 1
 GOLDEN_PATH_VERSION = "sd15-lora-golden-path-v1"
 SELECTION_POLICY_VERSION = "mvp-gpu-selection-v1"
 PRICE_DATA_TYPE = "DEMO_SNAPSHOT"
 ESTIMATE_DISCLAIMER = (
-    "예상 시간과 GPU 비용은 데모 전 검증한 프로필 스냅샷이며 실제 청구액을 보장하지 않습니다."
+    "예상 시간과 GPU 비용은 사전 검증한 실행 프로필 기준 추정치이며 실제 청구액을 보장하지 않습니다."
 )
 
 

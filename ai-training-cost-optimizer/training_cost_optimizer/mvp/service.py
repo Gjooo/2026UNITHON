@@ -74,7 +74,7 @@ class JobApplicationService:
         if recommendation is None:
             raise MvpServiceError(
                 "NO_ELIGIBLE_PLAN",
-                "입력한 예산 안에서 실행할 수 있는 데모 GPU 후보가 없습니다.",
+                "입력한 예산 안에서 실행할 수 있는 GPU 후보가 없습니다.",
                 422,
             )
 
@@ -99,7 +99,7 @@ class JobApplicationService:
         session = self.require_session(raw_session_token)
         job = self.repository.get_job_for_owner(job_id=job_id, owner_session_id=session.id)
         if job is None:
-            raise MvpServiceError("JOB_NOT_FOUND", "Job을 찾을 수 없습니다.", 404)
+            raise MvpServiceError("JOB_NOT_FOUND", "요청한 작업을 찾을 수 없습니다.", 404)
         return job
 
     def start_job(self, *, raw_session_token: str | None, job_id: str) -> MvpJob:

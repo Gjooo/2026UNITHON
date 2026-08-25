@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .config import (
     SESSION_COOKIE_NAME,
+    SESSION_EXECUTION_LIMIT,
     SESSION_TTL_DAYS,
     WORKLOAD,
     MvpConfigError,
@@ -101,7 +102,14 @@ def create_session(
         samesite="lax",
         path="/",
     )
-    return {"expiresAt": to_utc_iso(session.expires_at)}
+    return {
+        "expiresAt": to_utc_iso(session.expires_at),
+        # 화면이 실행 버튼을 누르기 전에 남은 횟수를 안내할 수 있게 한다.
+        "executionAllowance": {
+            "used": int(session.execution_used),
+            "limit": SESSION_EXECUTION_LIMIT,
+        },
+    }
 
 
 @router.post("/jobs", status_code=201)

@@ -12,6 +12,7 @@
 - 웹 사용자는 로그인 없이 익명 세션으로 Job을 분리한다.
 - 팀 Runpod API 키는 서버 환경변수 또는 Secret Vault에서만 읽는다. 클라이언트·DB·응답에는 노출하지 않는다.
 - 서버는 데모 전에 검증한 2~3개 GPU 실행 프로필만 비교한다. 프로필의 GPU type ID, 이미지, 실행 명령은 서버 상수다.
+- 사용자에게 전달되는 `message`, `failureMessage`, `reason`에는 데모 단계 표현(데모, MVP)과 인프라 용어(Pod, provisioning)를 쓰지 않는다. 오류 `code`와 `priceDataType` 같은 기계 판독 값은 예외이며 화면에 그대로 출력하지 않는다.
 
 ### 익명 세션
 
@@ -25,9 +26,12 @@ Response: `201 Created`
 
 ```json
 {
-  "expiresAt": "2026-09-01T12:00:00Z"
+  "expiresAt": "2026-09-01T12:00:00Z",
+  "executionAllowance": { "used": 0, "limit": 1 }
 }
 ```
+
+`executionAllowance`는 이 세션이 실제 비용을 발생시킬 수 있는 횟수와 이미 사용한 횟수다. 화면은 실행 버튼을 누르기 전에 남은 횟수를 안내할 수 있다. 운영 정책 값이며 제품 기능이 아니다.
 
 ### 공통 오류 응답
 
@@ -35,7 +39,7 @@ Response: `201 Created`
 {
   "error": {
     "code": "NO_ELIGIBLE_PLAN",
-    "message": "입력한 예산 안에서 실행할 수 있는 데모 GPU 후보가 없습니다."
+    "message": "입력한 예산 안에서 실행할 수 있는 GPU 후보가 없습니다."
   }
 }
 ```
@@ -85,7 +89,7 @@ Response: `201 Created`
   },
   "executionPlan": {
     "priceDataType": "DEMO_SNAPSHOT",
-    "estimateDisclaimer": "예상 시간과 GPU 비용은 데모 전 검증한 프로필 스냅샷이며 실제 청구액을 보장하지 않습니다.",
+    "estimateDisclaimer": "예상 시간과 GPU 비용은 사전 검증한 실행 프로필 기준 추정치이며 실제 청구액을 보장하지 않습니다.",
     "candidates": [
       {
         "profileId": "runpod-rtx4090-v1",

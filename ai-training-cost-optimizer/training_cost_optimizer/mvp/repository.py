@@ -188,11 +188,11 @@ class SQLiteMvpRepository:
                 (job_id, session.id),
             ).fetchone()
             if job_row is None:
-                raise MvpServiceError("JOB_NOT_FOUND", "Job을 찾을 수 없습니다.", 404)
+                raise MvpServiceError("JOB_NOT_FOUND", "요청한 작업을 찾을 수 없습니다.", 404)
             job = self._job_from_row(job_row)
             if job.status is not MvpJobStatus.DRAFT:
                 raise MvpServiceError(
-                    "INVALID_JOB_STATE", "Draft Job만 실행할 수 있습니다.", 409
+                    "INVALID_JOB_STATE", "이미 실행했거나 실행할 수 없는 작업입니다.", 409
                 )
             if session.execution_used:
                 raise MvpServiceError(
@@ -212,7 +212,7 @@ class SQLiteMvpRepository:
             ).fetchone()[0]
             if active_count:
                 raise MvpServiceError(
-                    "DEMO_BUSY", "다른 데모 실행이 진행 중입니다. 잠시 후 다시 시도해 주세요.", 409
+                    "DEMO_BUSY", "다른 실행이 진행 중입니다. 잠시 후 다시 시도해 주세요.", 409
                 )
 
             connection.execute(
@@ -293,8 +293,8 @@ class SQLiteMvpRepository:
             ).rowcount
         if updated != 1:
             if self.get_job(job_id) is None:
-                raise MvpServiceError("JOB_NOT_FOUND", "Job을 찾을 수 없습니다.", 404)
-            raise MvpServiceError("INVALID_JOB_STATE", "현재 Job 상태에서는 완료 callback을 받을 수 없습니다.", 409)
+                raise MvpServiceError("JOB_NOT_FOUND", "요청한 작업을 찾을 수 없습니다.", 404)
+            raise MvpServiceError("INVALID_JOB_STATE", "현재 상태에서는 완료 결과를 기록할 수 없습니다.", 409)
         job = self.get_job(job_id)
         assert job is not None
         return job
@@ -327,8 +327,8 @@ class SQLiteMvpRepository:
             ).rowcount
         if updated != 1:
             if self.get_job(job_id) is None:
-                raise MvpServiceError("JOB_NOT_FOUND", "Job을 찾을 수 없습니다.", 404)
-            raise MvpServiceError("INVALID_JOB_STATE", "현재 Job 상태에서는 종료를 요청할 수 없습니다.", 409)
+                raise MvpServiceError("JOB_NOT_FOUND", "요청한 작업을 찾을 수 없습니다.", 404)
+            raise MvpServiceError("INVALID_JOB_STATE", "현재 상태에서는 중단할 수 없습니다.", 409)
         job = self.get_job(job_id)
         assert job is not None
         return job

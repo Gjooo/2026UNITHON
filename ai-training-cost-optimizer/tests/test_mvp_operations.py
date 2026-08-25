@@ -404,3 +404,66 @@ def test_a_broken_spec_response_is_reported_not_raised(monkeypatch):
 
     assert exit_code == 1
     assert "500" in output.getvalue()
+
+
+def test_session_response_reports_the_remaining_execution_allowance(tmp_path):
+    repository = SQLiteMvpRepository(tmp_path / "mvp.sqlite3")
+    service = JobApplicationService(repository, runner=FakeJobRunner())
+    app.dependency_overrides[get_mvp_service] = lambda: service
+    try:
+        client = TestClient(app, base_url="https://testserver")
+        assert client.post("/api/v1/session").json()["executionAllowance"] == {"used": 0, "limit": 1}
+
+        job = client.post(
+            "/api/v1/jobs", json={"maxBudgetKrw": 1_000, "priority": "CHEAPEST"}
+        ).json()
+        client.post(f"/api/v1/jobs/{job['id']}/start")
+
+        # 실행을 승인한 뒤에는 화면이 남은 횟수 0을 그대로 안내할 수 있다.
+        assert client.post("/api/v1/session").json()["executionAllowance"] == {"used": 1, "limit": 1}
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_user_facing_messages_avoid_demo_and_infrastructure_words(tmp_path):
+    """사용자에게 나가는 문구에 데모 단계 표현과 인프라 용어가 없어야 한다."""
+
+    from training_cost_optimizer.mvp.config import ESTIMATE_DISCLAIMER
+    from training_cost_optimizer.mvp.recommendation import ProfileRecommendationService
+
+    repository = SQLiteMvpRepository(tmp_path / "mvp.sqlite3")
+    provider = FakeRunpodLifecycleProvider()
+    provider.create_error = RunpodLifecycleError("boom")
+    worker = JobLifecycleWorker(repository, provider)
+    service = JobApplicationService(repository, runner=FakeJobRunner())
+    app.dependency_overrides[get_mvp_service] = lambda: service
+    banned = ("데모", "MVP", "Pod", "provisioning", "callback", "Draft")
+    try:
+        client = TestClient(app, base_url="https://testserver")
+        client.post("/api/v1/session")
+        messages = [ESTIMATE_DISCLAIMER]
+        messages.append(
+            client.post("/api/v1/jobs", json={"maxBudgetKrw": 1, "priority": "CHEAPEST"})
+            .json()["error"]["message"]
+        )
+        job = client.post(
+            "/api/v1/jobs", json={"maxBudgetKrw": 1_000, "priority": "CHEAPEST"}
+        ).json()
+        messages.append(client.get("/api/v1/jobs/unknown-id").json()["error"]["message"])
+        client.post(f"/api/v1/jobs/{job['id']}/start")
+        worker.run_once(job["id"])
+        messages.append(client.get(f"/api/v1/jobs/{job['id']}").json()["failureMessage"])
+        messages.append(client.post(f"/api/v1/jobs/{job['id']}/cancel").json()["error"]["message"])
+        for reason in [
+            ProfileRecommendationService().recommend(max_budget_krw=1_000, priority=p)
+            .selection_snapshot["recommended"]["reason"]
+            for p in ("CHEAPEST", "BALANCED", "FASTEST")
+        ]:
+            messages.append(reason)
+
+        for message in messages:
+            assert message
+            for word in banned:
+                assert word not in message, f"{word!r} in {message!r}"
+    finally:
+        app.dependency_overrides.clear()
