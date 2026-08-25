@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "SESSION_REQUIRED",
+    "message": "익명 세션이 필요합니다."
+  }
+}

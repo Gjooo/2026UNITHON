@@ -1,10 +1,7 @@
-/** 사전 검증된 고정 workload 하나만 실행한다. API-spec.md의 scenario 값과 같다. */
-export const DEMO_SCENARIO = {
-  name: 'Stable Diffusion 1.5 LoRA',
-  requiredVramGb: 24,
-  maxRuntimeMinutes: 10,
-} as const
-
+/**
+ * 입력 화면에서만 쓰는 상수. 필요 VRAM·최대 실행 시간처럼 서버 설정으로 바뀌는 값은
+ * 여기에 두지 않고 Job 응답의 `scenario`를 그대로 표시한다.
+ */
 export const PRIORITY_OPTIONS = [
   {
     value: 'CHEAPEST',

@@ -1,5 +1,10 @@
+import { useState } from 'react'
+import type { TrainingJob } from '@/api/jobs'
 import { useSession } from '@/hooks/useSession'
+import { useCreateJob } from '@/hooks/useCreateJob'
 import { ConstraintForm } from '@/features/training/ConstraintForm'
+import { ExecutionPlanReview } from '@/features/training/ExecutionPlanReview'
+import { toUserMessage } from '@/features/training/messages'
 import styles from './App.module.css'
 
 function SessionStatus() {
@@ -25,6 +30,8 @@ function SessionStatus() {
 
 export function App() {
   const session = useSession()
+  const [job, setJob] = useState<TrainingJob | null>(null)
+  const createJob = useCreateJob(setJob)
 
   return (
     <div className={styles.app}>
@@ -34,14 +41,37 @@ export function App() {
       </header>
 
       <main className={styles.main}>
-        <h1 className={styles.pageTitle}>예산과 우선순위만 정하면 됩니다</h1>
-        <p className={styles.pageLead}>
-          Agent가 검증된 GPU 후보를 비교해 실행안을 추천합니다. GPU 콘솔, SSH, CUDA 설정은
-          다루지 않습니다.
-        </p>
-        <div className={styles.content}>
-          <ConstraintForm isSessionReady={session.isSuccess} />
-        </div>
+        {job ? (
+          <>
+            <h1 className={styles.pageTitle}>Agent가 실행안을 비교했어요</h1>
+            <p className={styles.pageLead}>
+              아래 실행 계약은 Agent가 고정한 값입니다. GPU를 직접 바꾸지 않습니다.
+            </p>
+            <div className={styles.content}>
+              <ExecutionPlanReview job={job} />
+            </div>
+          </>
+        ) : (
+          <>
+            <h1 className={styles.pageTitle}>예산과 우선순위만 정하면 됩니다</h1>
+            <p className={styles.pageLead}>
+              Agent가 검증된 GPU 후보를 비교해 실행안을 추천합니다. GPU 콘솔, SSH, CUDA
+              설정은 다루지 않습니다.
+            </p>
+            <div className={styles.content}>
+              {createJob.isError && (
+                <p className={styles.formAlert} role="alert">
+                  {toUserMessage(createJob.error)}
+                </p>
+              )}
+              <ConstraintForm
+                isSessionReady={session.isSuccess}
+                isSubmitting={createJob.isPending}
+                onSubmit={createJob.mutate}
+              />
+            </div>
+          </>
+        )}
       </main>
     </div>
   )

@@ -25,10 +25,10 @@ describe('ConstraintForm', () => {
     expect(within(priority).getByRole('radio', { name: /균형/ })).toBeInTheDocument()
     expect(within(priority).getByRole('radio', { name: /빠른 완료/ })).toBeInTheDocument()
 
-    expect(screen.getByText('Stable Diffusion 1.5 LoRA')).toBeInTheDocument()
-    expect(screen.getByText('24GB')).toBeInTheDocument()
-    expect(screen.getByText('10분')).toBeInTheDocument()
+    // 필요 VRAM·최대 실행 시간은 서버 설정으로 바뀌므로 입력 화면에서 단언하지 않는다.
     expect(screen.getByText('사전 검증된 고정 작업')).toBeInTheDocument()
+    expect(screen.queryByText('24GB')).not.toBeInTheDocument()
+    expect(screen.queryByText('10분')).not.toBeInTheDocument()
 
     expect(
       screen.getByRole('button', { name: 'Agent에게 실행안 요청' }),

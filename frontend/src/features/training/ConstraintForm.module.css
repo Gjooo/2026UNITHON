@@ -181,3 +181,16 @@
   color: var(--ink-faint);
   cursor: not-allowed;
 }
+
+.scenarioNote {
+  color: var(--ink-mute);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.fieldError {
+  color: var(--status-danger);
+  font-size: 13px;
+  line-height: 1.45;
+  margin-top: var(--space-sm);
+}

@@ -88,3 +88,12 @@
     letter-spacing: -0.42px;
   }
 }
+
+.formAlert {
+  background: var(--canvas-soft);
+  border: 1px solid var(--status-danger);
+  border-radius: var(--radius-md);
+  color: var(--status-danger);
+  margin-bottom: var(--space-lg);
+  padding: var(--space-md) var(--space-lg);
+}
