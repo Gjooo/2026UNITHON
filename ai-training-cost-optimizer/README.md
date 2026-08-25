@@ -73,6 +73,15 @@ python -m training_cost_optimizer.mvp.rehearsal
 
 임시 DB와 `fake` 모드로 서버를 띄워 `frontend-flowchart.txt`의 추천·승인·폴링·완료 callback·취소·세션 격리·CORS를 한 번에 확인한다. Runpod 호출과 비용이 없다.
 
+#### 배포
+
+컨테이너와 배포 절차는 [DEPLOY.md](DEPLOY.md)에 있다. 이 백엔드는 실행 상태와 GPU 종료를 프로세스 안에서 책임지므로 **인스턴스 1개·worker 1개·지속 볼륨·자동 정지 없음**이 배포 조건이다.
+
+```bash
+docker build -t unwork-backend .
+docker run -d -p 8080:8080 -v unwork-data:/data unwork-backend
+```
+
 #### 실제 Runpod smoke test
 
 이 명령만 실제 Pod를 만들고 삭제하며 **비용이 발생한다**. 일반 test suite에는 포함하지 않는다.
