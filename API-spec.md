@@ -1,19 +1,33 @@
-# UNWORK 학습 실행 Agent — API 명세
+# UNWORK 학습 실행 Agent — 최소 MVP API 명세
 
-[PRD-final.md](PRD-final.md)의 제품 기능 전체를 담는 REST API다. 사용자는 학습 Repository·실행 명령·예산·완료 조건을 제공하고, Agent는 코드 분석부터 실행안 비교, 환경 준비, 학습 감시, 결과 전달, 자원 종료 확인까지 하나의 `TrainingJob`으로 수행한다.
-
-> **데모 운영**은 이 API를 좁히지 않는다. 화면과 계약은 제품 전체를 그대로 노출하고, 데모에서는 [11. 데모 골든 패스](#11-데모-골든-패스)의 값으로 진행하도록 진행자가 안내한다.
+`MVP-implementation-plan.md`와 `ERD.md`를 기준으로 한 제한된 GPU 선택·실행 데모용 REST API다. 사용자는 예산과 우선순위만 제시하고, Agent가 사전 검증한 GPU 실행 프로필을 비교해 하나를 추천한다. API의 중심 리소스는 추천 실행 계약을 포함한 `TrainingJob`이다.
 
 ## 1. 공통 규약
 
 - Base URL: `/api/v1`
 - Content-Type: `application/json`
-- 모든 ID: 문자열 (`job_`, `plan_`, `dec_`, `art_` 접두사)
+- 모든 ID: UUID 문자열
 - 모든 시간: ISO 8601 UTC
-- 모든 금액: 원(KRW) 정수
-- 인증: HttpOnly·Secure·SameSite=Lax 세션 쿠키. 모든 요청은 `credentials: 'include'`.
-- Provider API 키는 서버 Secret Vault에서만 읽는다. 응답·로그·클라이언트 어디에도 노출하지 않는다.
-- 응답에 Provider resource ID, VM/Pod ID, 이미지 태그, callback URL을 포함하지 않는다. 사용자에게 보이는 환경 정보는 프레임워크·CUDA·Python 버전까지다.
+- MVP 실행 Provider: 팀 Runpod 계정
+- 웹 사용자는 로그인 없이 익명 세션으로 Job을 분리한다.
+- 팀 Runpod API 키는 서버 환경변수 또는 Secret Vault에서만 읽는다. 클라이언트·DB·응답에는 노출하지 않는다.
+- 서버는 데모 전에 검증한 2~3개 GPU 실행 프로필만 비교한다. 프로필의 GPU type ID, 이미지, 실행 명령은 서버 상수다.
+
+### 익명 세션
+
+### `POST /session`
+
+익명 세션을 만들거나 갱신한다. 서버는 임의 토큰을 `HttpOnly`, `Secure`, `SameSite=Lax` 쿠키로 설정하고 DB에는 토큰 해시만 저장한다. 세션은 7일 동안 유효하다.
+
+Request body: 없음
+
+Response: `201 Created`
+
+```json
+{
+  "expiresAt": "2026-09-01T12:00:00Z"
+}
+```
 
 ### 공통 오류 응답
 
@@ -21,8 +35,7 @@
 {
   "error": {
     "code": "NO_ELIGIBLE_PLAN",
-    "message": "이 예산 안에서 실행할 수 있는 GPU 후보가 없습니다.",
-    "details": { "minimumRequiredBudgetKrw": 7300 }
+    "message": "입력한 예산 안에서 실행할 수 있는 데모 GPU 후보가 없습니다."
   }
 }
 ```
@@ -31,398 +44,203 @@
 | --- | --- | --- |
 | 400 | `VALIDATION_ERROR` | 요청 형식 오류 |
 | 401 | `SESSION_REQUIRED`, `SESSION_EXPIRED` | 세션 쿠키 없음 또는 만료 |
-| 404 | `JOB_NOT_FOUND`, `ARTIFACT_NOT_FOUND` | 없거나 현재 세션 소유가 아님 |
-| 409 | `INVALID_JOB_STATE` | 현재 상태에서 할 수 없는 행동 |
-| 409 | `PLAN_EXPIRED` | 승인 직전 재검증에서 가격·가용성이 바뀜 |
-| 409 | `NO_PROVIDER_CONNECTED` | 연결된 공급자가 없음 |
-| 409 | `DECISION_ALREADY_RESOLVED` | 이미 처리된 판단 요청 |
-| 409 | `EXECUTION_LIMIT_REACHED` | 이 세션의 실행 허용 횟수 소진 |
-| 409 | `CONCURRENT_EXECUTION_LIMIT` | 동시 실행 상한 도달. 대기열은 제공하지 않음 |
-| 422 | `ANALYSIS_FAILED` | Repository·실행 명령을 분석하지 못함 |
-| 422 | `NO_ELIGIBLE_PLAN` | 예산 안에서 실행 가능한 후보 없음 |
-| 503 | `PROVIDER_UNAVAILABLE` | 공급자 조회·생성·상태 확인 실패 |
+| 404 | `JOB_NOT_FOUND` | Job이 없거나 현재 세션의 Job이 아님 |
+| 409 | `INVALID_JOB_STATE`, `DEMO_BUSY`, `EXECUTION_ALREADY_USED` | 현재 상태에서 실행·취소할 수 없거나 실행 제한에 도달 |
+| 422 | `NO_ELIGIBLE_PLAN` | 최대 예산 안의 데모 GPU 후보가 없음 |
+| 503 | `RUNPOD_UNAVAILABLE` | Pod 생성 또는 상태 확인 실패 |
 
-## 2. 세션
+## 2. 핵심 리소스
 
-### `POST /session`
+### 제약 입력
 
-익명 세션을 만들거나 갱신한다. DB에는 토큰 해시만 저장한다.
-
-Response: `201 Created`
+`POST /jobs`는 아래 제약만 받는다. 학습 코드·GPU·Provider는 사용자 입력이 아니다.
 
 ```json
 {
-  "expiresAt": "2026-09-02T12:00:00Z",
-  "executionAllowance": { "used": 0, "limit": 1 }
-}
-```
-
-`executionAllowance`는 이 세션이 실제 비용을 발생시킬 수 있는 남은 횟수다. 운영 정책 값이며 제품 기능이 아니다.
-
-## 3. 공급자 연결
-
-### `GET /providers`
-
-Response: `200 OK`
-
-```json
-{
-  "providers": [
-    {
-      "id": "runpod",
-      "name": "Runpod",
-      "connectionStatus": "CONNECTED",
-      "connectedAt": "2026-08-20T09:12:00Z",
-      "availableGpuTypes": 14
-    },
-    {
-      "id": "vastai",
-      "name": "Vast.ai",
-      "connectionStatus": "NOT_CONNECTED",
-      "connectedAt": null,
-      "availableGpuTypes": 0
-    }
-  ]
-}
-```
-
-`connectionStatus`: `CONNECTED`, `NOT_CONNECTED`, `INVALID_CREDENTIAL`, `UNREACHABLE`.
-
-### `POST /providers/{providerId}/credential`
-
-공급자 계정을 연결한다. 서버는 값을 즉시 Secret Vault에 저장하고 다시 반환하지 않는다.
-
-Request:
-
-```json
-{ "apiKey": "..." }
-```
-
-Response: `204 No Content`
-
-### `DELETE /providers/{providerId}/credential`
-
-연결을 해제하고 저장된 비밀값을 폐기한다. Response: `204 No Content`
-
-## 4. 학습 작업 생성
-
-### `POST /jobs`
-
-사용자가 제공하는 값은 학습 Repository, 실행 명령, 예산, 완료 조건뿐이다. GPU 종류·Region·CUDA 버전·VM 옵션은 요청에 없다.
-
-```json
-{
-  "repositoryUrl": "https://github.com/example/sd15-lora",
-  "revision": "main",
-  "executionCommand": "python train_lora.py --config configs/demo.yaml",
-  "completionCriteria": {
-    "type": "PROCESS_EXIT",
-    "maxSteps": null,
-    "metricName": null,
-    "targetValue": null
-  },
   "maxBudgetKrw": 10000,
-  "maxRuntimeMinutes": 60
+  "priority": "CHEAPEST"
 }
 ```
 
 | 필드 | 규칙 |
 | --- | --- |
-| `repositoryUrl` | 공개 접근 가능한 Git URL. |
-| `revision` | branch, tag, 또는 commit SHA. 생략하면 기본 branch. |
-| `executionCommand` | Repository 루트에서 실행할 단일 명령. |
-| `completionCriteria.type` | `PROCESS_EXIT`, `MAX_STEPS`, `TARGET_METRIC`. |
-| `maxBudgetKrw` | 0보다 큰 정수. 실행안 비교와 자동 중단의 기준이다. |
-| `maxRuntimeMinutes` | 0보다 큰 정수. 초과하면 Agent가 학습을 중단한다. |
+| `maxBudgetKrw` | 0보다 큰 정수. 추천 단계의 **예상 GPU 비용** 상한이며, 실제 청구액을 제한하지 않는다. |
+| `priority` | `CHEAPEST`, `BALANCED`, `FASTEST` 중 하나. 각각 저비용·균형·빠른 완료를 뜻한다. |
 
-Response: `202 Accepted` — `TrainingJob` (`status: ANALYZING`)
-
-Agent는 Repository를 읽어 프레임워크·의존성·필요 VRAM·기준 실행시간을 도출한 뒤, 연결된 공급자들의 GPU 후보를 비교해 실행안 3개를 만든다. 이 단계에서는 비용이 발생하지 않는다.
-
-## 5. TrainingJob
+### TrainingJob
 
 ```json
 {
-  "id": "job_5f2c",
-  "status": "PLAN_READY",
-  "workload": {
-    "repositoryUrl": "https://github.com/example/sd15-lora",
-    "revision": "main",
-    "commitSha": "9c1d4ab",
-    "executionCommand": "python train_lora.py --config configs/demo.yaml",
-    "completionCriteria": { "type": "PROCESS_EXIT", "maxSteps": null, "metricName": null, "targetValue": null }
-  },
-  "constraint": { "maxBudgetKrw": 10000, "maxRuntimeMinutes": 60 },
-  "analysis": {
-    "status": "READY",
-    "confidence": "MEDIUM",
-    "framework": "PyTorch",
-    "frameworkVersion": "2.3.0",
-    "cudaVersion": "12.1",
-    "pythonVersion": "3.10",
+  "id": "job_uuid",
+  "scenario": {
+    "name": "Stable Diffusion 1.5 LoRA",
+    "repositoryUrl": "https://github.com/example/golden-path",
+    "executionCommand": "./run-demo-training.sh",
     "requiredVramGb": 24,
-    "estimatedBaseMinutes": 45,
-    "detectedDependencies": ["diffusers==0.27.2", "peft==0.10.0", "accelerate==0.29.3"],
-    "notes": ["requirements.txt에서 CUDA 12.1과 호환되는 버전을 확인했습니다."],
-    "unknowns": ["데이터셋 크기를 코드에서 확인하지 못해 기본값으로 추정했습니다."]
+    "maxRuntimeMinutes": 10
   },
-  "plans": [],
-  "approvedPlanId": null,
-  "contract": null,
-  "execution": null,
-  "pendingDecision": null,
-  "result": null,
-  "createdAt": "2026-08-26T03:10:00Z",
-  "updatedAt": "2026-08-26T03:10:42Z"
-}
-```
-
-`analysis.unknowns`는 Agent가 확신하지 못한 요구사항이다. 화면은 이를 숨기지 않는다.
-
-### ExecutionPlan
-
-`plans`에는 `CHEAPEST`, `FASTEST`, `BALANCED` 세 실행안이 항상 이 순서로 들어간다. 예산을 넘는 안도 비교 근거로 남기되 `budget.withinBudget: false`로 표시하고 승인할 수 없다.
-
-```json
-{
-  "id": "plan_cheapest",
-  "kind": "CHEAPEST",
-  "label": "가장 저렴함",
-  "provider": { "id": "runpod", "name": "Runpod" },
-  "gpu": { "name": "NVIDIA RTX 4090", "vramGb": 24, "count": 1 },
-  "estimatedRuntimeMinutes": 52,
-  "cost": {
-    "gpuCostKrw": 4200,
-    "agentFeeKrw": 630,
-    "storageAndTransferKrw": 120,
-    "estimatedTotalKrw": 4950,
-    "priceDataType": "SNAPSHOT",
-    "pricedAt": "2026-08-26T03:10:40Z"
+  "constraint": {
+    "maxBudgetKrw": 10000,
+    "priority": "CHEAPEST"
   },
-  "budget": { "withinBudget": true, "shortfallKrw": null },
-  "risk": {
-    "level": "MEDIUM",
-    "reasons": ["커뮤니티 클라우드 인스턴스라 다른 사용자에게 회수될 수 있습니다."]
-  },
-  "alternatives": [
-    {
-      "provider": { "id": "runpod", "name": "Runpod" },
-      "gpu": { "name": "NVIDIA A100 40GB", "vramGb": 40, "count": 1 },
-      "estimatedRuntimeMinutes": 31,
-      "estimatedTotalKrw": 7180,
-      "reason": "선택 GPU가 중단되면 이 후보로 재계획을 제안합니다."
+  "executionPlan": {
+    "priceDataType": "DEMO_SNAPSHOT",
+    "estimateDisclaimer": "예상 시간과 GPU 비용은 데모 전 검증한 프로필 스냅샷이며 실제 청구액을 보장하지 않습니다.",
+    "candidates": [
+      {
+        "profileId": "runpod-rtx4090-v1",
+        "provider": "Runpod",
+        "gpuType": "NVIDIA RTX 4090",
+        "estimatedRuntimeMinutes": 9,
+        "estimatedGpuCostKrw": 450,
+        "eligibility": "ELIGIBLE"
+      },
+      {
+        "profileId": "runpod-a100-v1",
+        "provider": "Runpod",
+        "gpuType": "NVIDIA A100 40GB",
+        "estimatedRuntimeMinutes": 6,
+        "estimatedGpuCostKrw": 780,
+        "eligibility": "ELIGIBLE"
+      }
+    ],
+    "recommended": {
+      "profileId": "runpod-rtx4090-v1",
+      "provider": "Runpod",
+      "gpuType": "NVIDIA RTX 4090",
+      "estimatedRuntimeMinutes": 9,
+      "estimatedGpuCostKrw": 450,
+      "reason": "예산 안 후보 중 예상 GPU 비용이 가장 낮습니다."
     }
-  ],
-  "environment": {
-    "frameworkVersion": "PyTorch 2.3.0",
-    "cudaVersion": "12.1",
-    "pythonVersion": "3.10",
-    "verified": true
   },
-  "reason": "예산 안 후보 중 예상 총비용이 가장 낮습니다.",
-  "recommended": true
+  "status": "DRAFT",
+  "failureMessage": null,
+  "exitCode": null,
+  "completionLog": null,
+  "startedAt": null,
+  "finishedAt": null,
+  "podTerminatedAt": null
 }
 ```
 
-- `cost.estimatedTotalKrw`는 GPU 사용료·저장소/전송비·Agent 실행 수수료의 합이다. 시간당 단가가 아니라 **작업 완료 비용**으로 비교한다.
-- `risk`는 비용에 섞지 않고 따로 표시한다. `level`: `LOW`, `MEDIUM`, `HIGH`.
-- `priceDataType`: `LIVE`(조회 시점 실시간) 또는 `SNAPSHOT`(검증된 스냅샷).
-- `recommended`는 사용자의 제약에 대해 Agent가 먼저 제시하는 안이다. 세 안 모두 승인 가능하다.
+- `scenario`은 고정 workload를 설명하는 읽기 전용 값이다.
+- `executionPlan`은 Job 생성 시 계산한 스냅샷이며, 사용자 요청으로 GPU를 바꿀 수 없다.
+- `candidates`에는 VRAM 조건을 만족한 데모 프로필을 모두 표시한다. 예산을 넘는 후보는 `eligibility: OVER_BUDGET`으로 보이지만 추천되지 않는다.
+- `priceDataType: DEMO_SNAPSHOT`은 이 값이 실시간 가격이나 실제 청구액이 아님을 뜻한다.
 
-### 상태
+### 추천 정책
 
-```text
-ANALYZING → PLAN_READY → PROVISIONING → PREPARING → RUNNING → TERMINATING → COMPLETED
-    ↓                         ↓             ↓          ↓  ↑                 ↘ FAILED
-ANALYSIS_FAILED               ↘─────────────┴──────────┘  │                 ↘ CANCELLED
-                                                RUNNING ⇄ AWAITING_DECISION ↘ BUDGET_STOPPED
-```
+예산 안의 후보만 대상으로 아래의 결정적 정책을 적용한다. 동점이면 예상 GPU 비용, 예상 실행시간, `profileId` 순으로 정렬한다.
 
-| 상태 | 의미 |
+| `priority` | 선택 정책 |
 | --- | --- |
-| `ANALYZING` | Repository와 실행 요구사항을 분석하고 후보를 비교하는 중. 비용 없음 |
-| `ANALYSIS_FAILED` | 코드·명령을 분석하지 못해 실행안을 만들 수 없음 |
-| `PLAN_READY` | 실행안 3개가 준비되고 승인을 기다리는 중. 비용 없음 |
-| `PROVISIONING` | 승인된 실행안의 GPU 환경을 생성하는 중 |
-| `PREPARING` | Repository 배포, 의존성·모델·데이터 준비 중 |
-| `RUNNING` | 학습 실행 중 |
-| `AWAITING_DECISION` | 재계획 또는 계속 투자 여부에 사용자 판단이 필요한 상태 |
-| `TERMINATING` | 종료 처리와 자원 회수 확인 중 |
-| `COMPLETED` | 완료 조건 충족, 결과 보관, 자원 종료 확인이 모두 끝남 |
-| `FAILED` | 실패로 종료 처리가 끝남 |
-| `CANCELLED` | 사용자 중단으로 종료 처리가 끝남 |
-| `BUDGET_STOPPED` | 예산 또는 최대 실행시간 상한에 도달해 Agent가 중단함 |
+| `CHEAPEST` | 예상 GPU 비용이 가장 낮은 후보 |
+| `FASTEST` | 예상 실행시간이 가장 짧은 후보 |
+| `BALANCED` | `0.5 × (후보 비용 / 최저 비용) + 0.5 × (후보 시간 / 최단 시간)` 점수가 가장 낮은 후보 |
 
-`TERMINATING` 동안에는 최종 결과를 표시하지 않는다. 자원 종료 확인이 끝난 뒤에만 최종 상태로 바꾼다.
+실행 전에는 추천 결과를 다시 계산하거나 가격을 갱신하지 않는다. 실행 계약은 Job 생성 시점의 추천 스냅샷으로 고정한다.
 
-## 6. 조회
+### Job 상태
 
-### `GET /jobs/{jobId}`
+`DRAFT → PROVISIONING → RUNNING → TERMINATING → COMPLETED | FAILED | CANCELLED`
 
-현재 세션이 소유한 Job을 반환한다. 다른 세션의 Job은 `404 JOB_NOT_FOUND`다.
+`COMPLETED`는 학습 성공 callback, 종료 코드 `0`, Pod 종료 확인이 모두 끝났을 때만 표시한다.
 
-Response: `200 OK` — `TrainingJob`
+## 3. Job 생성·조회·실행
 
-폴링 간격 권장: `ANALYZING` 2초, `PROVISIONING`/`PREPARING`/`RUNNING`/`TERMINATING` 3초, 최종 상태에서는 중단.
+### `POST /jobs`
 
-### `GET /jobs`
+최대 예산·우선순위를 받아 GPU 후보를 비교하고, Agent 추천 실행 계약이 담긴 Draft Job을 만든다. Pod를 만들지 않으며 비용도 발생하지 않는다.
 
-Response: `200 OK` — `{ "jobs": [TrainingJobSummary] }`
+Request body: [제약 입력](#제약-입력)
 
-## 7. 실행 계약 승인
-
-### `POST /jobs/{jobId}/approve`
-
-```json
-{ "planId": "plan_balanced" }
-```
+Response: `201 Created` — `TrainingJob` (`status: DRAFT`)
 
 처리 규칙:
 
-1. Job은 `PLAN_READY`여야 한다.
-2. 서버는 승인 직전 선택 실행안의 가격·가용성을 재검증한다. 달라졌으면 `409 PLAN_EXPIRED`와 함께 갱신된 실행안을 `details.plans`로 돌려주고 Job은 `PLAN_READY`로 남긴다.
-3. 통과하면 `contract`를 고정하고 환경 생성을 시작한다.
+1. 서버는 고정 workload의 필요 VRAM을 기준으로 GPU 프로필을 필터한다.
+2. 각 후보의 예상 실행시간·예상 GPU 비용을 계산한다.
+3. `estimatedGpuCostKrw <= maxBudgetKrw` 후보가 없으면 `422 NO_ELIGIBLE_PLAN`을 반환하고 Job을 만들지 않는다.
+4. 추천 정책으로 하나를 선택하고, 후보 비교 결과와 선택 근거를 `selection_snapshot`에 저장한다.
+
+### `GET /jobs/{jobId}`
+
+현재 세션이 소유한 Job의 실행 계약과 상태를 반환한다. 프런트엔드는 실행 중일 때 2~3초 간격으로 이 API를 폴링한다.
+
+Response: `200 OK` — `TrainingJob`
+
+### `POST /jobs/{jobId}/start`
+
+Agent가 추천한 고정 실행 계약을 승인하고 실제 Pod 생성을 시작한다.
+
+Request body: 없음
 
 Response: `202 Accepted`
 
 ```json
-{ "id": "job_5f2c", "status": "PROVISIONING", "contract": { "...": "..." } }
-```
-
-### Contract
-
-승인 시점에 고정되어 변경되지 않는다. GPU·비용·시간이 달라지는 변경은 새 계약으로 다시 승인받는다.
-
-```json
 {
-  "approvedAt": "2026-08-26T03:12:05Z",
-  "planId": "plan_balanced",
-  "planSnapshot": { "...": "ExecutionPlan 전문" },
-  "commitSha": "9c1d4ab",
-  "executionCommand": "python train_lora.py --config configs/demo.yaml",
-  "completionCriteria": { "type": "PROCESS_EXIT" },
-  "autoStop": {
-    "budgetKrw": 10000,
-    "runtimeMinutes": 60,
-    "noProgressMinutes": 15
-  }
+  "id": "job_uuid",
+  "status": "PROVISIONING"
 }
 ```
 
-## 8. 실행 감시와 중단
+처리 규칙:
 
-`PROVISIONING` 이후의 `execution`:
-
-```json
-{
-  "phase": "TRAINING",
-  "startedAt": "2026-08-26T03:12:40Z",
-  "elapsedMinutes": 18,
-  "steps": [
-    { "name": "환경 생성", "status": "DONE", "startedAt": "...", "finishedAt": "..." },
-    { "name": "코드·의존성 준비", "status": "DONE", "startedAt": "...", "finishedAt": "..." },
-    { "name": "학습 실행", "status": "ACTIVE", "startedAt": "...", "finishedAt": null },
-    { "name": "결과 보관·자원 종료", "status": "PENDING", "startedAt": null, "finishedAt": null }
-  ],
-  "cost": { "accruedKrw": 1820, "dataType": "ESTIMATED", "budgetUsedPercent": 18 },
-  "progress": { "currentStep": 320, "totalSteps": 1000, "lastMetric": { "name": "loss", "value": 0.41 } },
-  "lastCheckpointAt": "2026-08-26T03:28:10Z",
-  "logTail": ["step 320/1000 loss=0.41", "saved checkpoint step-300"]
-}
-```
-
-- `cost.dataType`: `METERED`(공급자 계측) 또는 `ESTIMATED`(계약 단가 기반 추정).
-- `logTail`은 최근 몇 줄만 담는 폴링 값이다. 실시간 스트림이 아니다.
-- `progress`는 알 수 없으면 `null`이다. 화면은 없는 값을 추정하지 않는다.
+1. Job은 `DRAFT`여야 한다.
+2. 세션의 `execution_used`가 `false`여야 한다. Pod 생성을 시작하면 `true`로 변경한다.
+3. 서비스 전체에 `PROVISIONING`, `RUNNING`, `TERMINATING` Job이 있으면 `409 DEMO_BUSY`를 반환한다. 대기열은 제공하지 않는다.
+4. 서버는 Job의 추천 프로필에 고정된 Runpod GPU type ID·이미지·실행 명령·최대 10분 설정으로 Pod를 생성한다.
 
 ### `POST /jobs/{jobId}/cancel`
 
-`PROVISIONING`, `PREPARING`, `RUNNING`, `AWAITING_DECISION`에서 호출한다.
+`PROVISIONING` 또는 `RUNNING` Job을 중단한다.
 
-Response: `202 Accepted` — `{ "id": "job_5f2c", "status": "TERMINATING" }`
-
-서버는 학습 중단, checkpoint 보존, 자원 삭제를 요청하고 종료를 확인한 뒤 `CANCELLED`로 바꾼다.
-
-## 9. 판단 요청
-
-예산·시간·GPU가 바뀌는 재계획, 추가 투자 여부처럼 사람의 판단이 필요할 때 Job은 `AWAITING_DECISION`이 되고 `pendingDecision`이 채워진다. 정상 경로에서는 나타나지 않는다.
+Response: `202 Accepted`
 
 ```json
 {
-  "id": "dec_1",
-  "type": "REPLAN",
-  "raisedAt": "2026-08-26T03:31:00Z",
-  "reason": "선택한 GPU가 회수돼 남은 학습을 이어갈 수 없습니다.",
-  "current": { "gpu": "NVIDIA RTX 4090", "spentKrw": 2100, "completedPercent": 42 },
-  "proposed": { "...": "ExecutionPlan 전문" },
-  "delta": { "additionalCostKrw": 3400, "additionalMinutes": 26, "gpuChanged": true, "resumesFromCheckpoint": true },
-  "expiresAt": "2026-08-26T03:46:00Z"
+  "id": "job_uuid",
+  "status": "TERMINATING"
 }
 ```
 
-`type`: `REPLAN`(다른 GPU로 이어감), `CONTINUE_INVESTMENT`(예상보다 오래 걸려 추가 비용 필요), `BUDGET_EXCEEDED`(상한 도달).
+서버는 학습 중단과 Pod 삭제를 요청하고, Runpod에서 종료를 확인한 뒤 `CANCELLED`로 변경한다.
 
-### `POST /jobs/{jobId}/decisions/{decisionId}`
+## 4. 내부 학습 callback
 
-```json
-{ "outcome": "APPROVE" }
-```
+### `POST /internal/jobs/{jobId}/completion`
 
-`outcome`: `APPROVE`(제안대로 계속) 또는 `STOP`(여기서 종료).
+사전 검증된 학습 컨테이너가 종료 직전에 호출하는 내부 endpoint다. 공개 사용자 UI에서 호출하지 않는다.
 
-Response: `202 Accepted` — `{ "id": "job_5f2c", "status": "PROVISIONING" }` 또는 `{ "status": "TERMINATING" }`
-
-`expiresAt`이 지나면 서버가 `STOP`으로 처리한다. 만료된 판단 요청에 응답하면 `409 DECISION_ALREADY_RESOLVED`다.
-
-## 10. 결과
-
-최종 상태의 `result`:
+Request:
 
 ```json
 {
   "outcome": "SUCCEEDED",
-  "finishedAt": "2026-08-26T04:02:11Z",
-  "runtimeMinutes": 49,
   "exitCode": 0,
-  "completionLog": "Training completed. 1000/1000 steps.",
-  "failureMessage": null,
-  "cost": { "estimatedTotalKrw": 4950, "actualTotalKrw": 5120, "dataType": "METERED" },
-  "artifacts": [
-    { "id": "art_1", "name": "lora_weights.safetensors", "kind": "MODEL", "sizeBytes": 145000000, "createdAt": "..." },
-    { "id": "art_2", "name": "training.log", "kind": "LOG", "sizeBytes": 82000, "createdAt": "..." }
-  ],
-  "checkpoints": [{ "id": "ckpt_3", "step": 900, "createdAt": "..." }],
-  "resourceTeardown": { "status": "CONFIRMED", "confirmedAt": "2026-08-26T04:02:40Z", "message": null }
+  "message": "Training completed"
 }
 ```
 
-- `outcome`: `SUCCEEDED`, `FAILED`, `CANCELLED`, `BUDGET_STOPPED`.
-- `cost.actualTotalKrw`는 계측값이 없으면 `null`이다. 화면은 추정값을 실제 비용으로 표시하지 않는다.
-- `resourceTeardown.status`: `PENDING`, `CONFIRMED`, `UNCONFIRMED`. `UNCONFIRMED`는 실패가 아니라 확인되지 않은 상태로 따로 표시한다.
-- `failureMessage`는 사용자에게 안전한 짧은 문구다. stack trace, 자격 증명, Provider resource ID를 담지 않는다.
-
-### `GET /jobs/{jobId}/artifacts/{artifactId}`
-
-Response: `302 Found` — 만료되는 서명 URL로 redirect. URL은 세션 소유자에게만 발급한다.
-
-## 11. 데모 골든 패스
-
-제품 API와 화면은 좁히지 않는다. 데모에서는 진행자가 아래 값으로 입력하도록 안내하고, 서버는 운영 안전장치만 적용한다.
-
-| 입력 | 데모 값 |
+| 필드 | 규칙 |
 | --- | --- |
-| `repositoryUrl` | 사전 검증된 SD 1.5 LoRA repository |
-| `revision` | 고정 commit SHA |
-| `executionCommand` | 사전 검증된 학습 명령 |
-| `completionCriteria` | `PROCESS_EXIT` |
-| `maxBudgetKrw` | 실행안 3개가 모두 비교되도록 정한 값 |
-| `maxRuntimeMinutes` | 10 |
+| `outcome` | `SUCCEEDED` 또는 `FAILED` |
+| `exitCode` | 학습 프로세스 종료 코드 |
+| `message` | 완료 화면에 표시할 짧은 메시지 |
 
-서버 측 운영 안전장치(제품 기능이 아니라 배포 설정):
+Response: `204 No Content`
 
-1. 세션당 실제 비용이 발생하는 실행은 1회 (`EXECUTION_LIMIT_REACHED`).
-2. 서비스 전체 동시 실행 1개, 대기열 없음 (`CONCURRENT_EXECUTION_LIMIT`).
-3. 실행 가능한 Repository allowlist. 벗어나면 `ANALYSIS_FAILED`.
-4. `maxRuntimeMinutes` 상한 강제.
+처리 규칙:
 
-이 네 가지는 API 계약이 아니라 배포 정책이다. 프런트엔드는 해당 오류 코드를 다음 행동과 함께 안내하기만 한다.
+- `outcome: SUCCEEDED`와 `exitCode: 0`이면 Job의 성공 결과를 기록하고 `TERMINATING`으로 전환한다.
+- 그 외에는 실패 원인을 기록하고 `TERMINATING`으로 전환한다.
+- callback이 오지 않은 채 10분 timeout이 지나면 서버가 `FAILED`로 기록하고 Pod 종료를 시작한다.
+
+## 5. 서버 실행 규칙
+
+1. 백엔드의 장시간 실행 프로세스가 Pod 생성, 상태 확인, timeout, 종료 처리를 소유한다. 브라우저를 닫아도 실행 처리는 계속된다.
+2. 학습 컨테이너는 Job의 추천 프로필에 고정된 이미지와 명령으로 실행된다. 최대 10분 timeout을 넘기면 학습을 중단한다.
+3. 성공, 실패, 취소, timeout의 모든 경로에서 Pod 삭제를 요청하고 Runpod 상태 조회로 종료를 확인한다.
+4. Pod 생성 실패, 학습 오류, timeout은 재시도 없이 `FAILED`와 짧은 원인 메시지로 표시한다.
+5. 성공 화면에는 `Training completed` 로그, 종료 코드, 실행 시간, Agent가 선택한 GPU 정보, Pod 자동 종료 완료를 표시한다.
+6. MVP는 임의 코드 실행, BYOK, 다중 Provider 비교, 실시간 가격·비용 계측, artifact, OOM 재계획을 제공하지 않는다.

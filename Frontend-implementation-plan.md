@@ -5,9 +5,10 @@
 이 문서는 [PRD-final.md](PRD-final.md)의 제품 기능 전체를 담는 웹 프런트엔드 구현 계획이다. 구현 판단은 아래 문서 순서로 따른다.
 
 1. [PRD-final.md](PRD-final.md) — 제품 기능과 사람·Agent의 역할 분담
-2. [API-spec.md](API-spec.md) — 서버 계약
-3. [DESIGN.md](DESIGN.md) — 유일한 디자인 기준
-4. [ERD.md](ERD.md) — 데이터 모델
+2. [API-spec.md](API-spec.md) — 합의된 서버 계약. **백엔드 소유 문서이며 프런트엔드는 고치지 않는다.**
+3. [frontend/docs/api-contract.md](frontend/docs/api-contract.md) — 프런트엔드가 PRD에서 도출한 요구 계약 초안. 화면과 MSW fixture는 이것을 따르고, `API-spec.md`와의 차이는 백엔드에 delta로 전달해 합의한다.
+4. [DESIGN.md](DESIGN.md) — 유일한 디자인 기준
+5. [ERD.md](ERD.md) — 데이터 모델. 백엔드 소유 문서다.
 
 화면이 증명해야 할 것은 다음 한 가지다.
 
@@ -39,7 +40,7 @@
 
 ### 데모 운영
 
-데모는 화면 기능을 좁히지 않는다. 진행자가 [API-spec.md의 데모 골든 패스](API-spec.md#11-데모-골든-패스) 값으로 입력하도록 안내하고, 실행 횟수·동시 실행·Repository allowlist는 서버 배포 정책으로 강제한다. 화면은 해당 오류 코드를 다음 행동과 함께 안내할 뿐, 제품 단계나 실행 성격을 라벨로 붙이지 않는다.
+데모는 화면 기능을 좁히지 않는다. 진행자가 [요구 계약 초안의 데모 골든 패스](frontend/docs/api-contract.md#11-데모-골든-패스) 값으로 입력하도록 안내하고, 실행 횟수·동시 실행·Repository allowlist는 서버 배포 정책으로 강제한다. 화면은 해당 오류 코드를 다음 행동과 함께 안내할 뿐, 제품 단계나 실행 성격을 라벨로 붙이지 않는다.
 
 ## 2. 기술 선택과 앱 경계
 
@@ -416,7 +417,7 @@ DESIGN.md의 값을 그대로 옮기고, 상태 전달에 필요한 최소한의
 
 ### 9.3 Fixture와 Fake API 계약
 
-MSW fixture는 백엔드가 계산한 값을 대신하는 독립 명세 데이터다. 테스트가 UI 코드와 같은 방식으로 비용이나 추천을 계산해서는 안 된다. 모든 Job fixture는 [API-spec.md](API-spec.md)의 `TrainingJob` 형식을 완전하게 만족한다.
+MSW fixture는 백엔드가 계산한 값을 대신하는 독립 명세 데이터다. 테스트가 UI 코드와 같은 방식으로 비용이나 추천을 계산해서는 안 된다. 모든 Job fixture는 [요구 계약 초안](frontend/docs/api-contract.md)의 `TrainingJob` 형식을 완전하게 만족한다.
 
 ```text
 src/test/fixtures/
@@ -505,7 +506,7 @@ Loop 종료 시 명령의 일부만 선택 실행하지 않고 해당 gate의 �
 
 ## 11. 백엔드 연동 확인 사항과 완료 조건
 
-이 계획의 API 계약은 프런트엔드가 [PRD-final.md](PRD-final.md)에서 도출해 [API-spec.md](API-spec.md)에 정의한 것이다. 백엔드 구현과 다음을 맞춘다.
+이 계획이 전제하는 API는 프런트엔드가 [PRD-final.md](PRD-final.md)에서 도출한 [요구 계약 초안](frontend/docs/api-contract.md)이며, 아직 합의된 계약이 아니다. 저장소 루트의 [API-spec.md](API-spec.md)는 백엔드 소유 문서이므로 프런트엔드가 고치지 않는다. 아래를 백엔드 담당자와 합의한 뒤에만 `API-spec.md`에 반영한다.
 
 1. 기본 배포를 same-origin reverse proxy로 구성한다. 분리 origin이 불가피하면 CORS allowlist와 `allow_credentials`를 설정하고, 두 origin이 `SameSite=Lax` cookie가 전송되는 same-site 관계인지 확인한다.
 2. `TrainingJob`의 모든 nullable field와 상태별 `analysis`·`plans`·`contract`·`execution`·`pendingDecision`·`result` 채움 규칙을 fixture로 고정한다.
