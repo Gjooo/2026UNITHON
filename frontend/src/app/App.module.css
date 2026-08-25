@@ -19,16 +19,6 @@
   letter-spacing: -0.2px;
 }
 
-.scopeBadge {
-  background: var(--canvas-soft);
-  border: 1px solid var(--hairline-cool);
-  border-radius: var(--radius-full);
-  color: var(--ink-mute);
-  font-size: 12px;
-  line-height: 1.45;
-  padding: var(--space-xxs) var(--space-sm);
-}
-
 .sessionStatus {
   align-items: center;
   display: flex;
@@ -96,9 +86,5 @@
   .pageTitle {
     font-size: 28px;
     letter-spacing: -0.42px;
-  }
-
-  .scopeBadge {
-    display: none;
   }
 }

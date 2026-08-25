@@ -1,4 +1,4 @@
-/** MVP는 사전 검증된 고정 workload 하나만 실행한다. API-spec.md의 scenario 값과 같다. */
+/** 사전 검증된 고정 workload 하나만 실행한다. API-spec.md의 scenario 값과 같다. */
 export const DEMO_SCENARIO = {
   name: 'Stable Diffusion 1.5 LoRA',
   requiredVramGb: 24,
@@ -26,4 +26,4 @@ export const PRIORITY_OPTIONS = [
 export type Priority = (typeof PRIORITY_OPTIONS)[number]['value']
 
 export const ESTIMATE_DISCLAIMER =
-  '예상 비용은 실제 청구액을 제한하지 않으며, Agent는 검증된 데모 실행안 안에서 선택합니다.'
+  '예상 비용은 실제 청구액을 제한하지 않으며, Agent는 사전 검증된 실행안 중에서만 선택합니다.'

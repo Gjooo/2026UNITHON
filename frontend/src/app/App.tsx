@@ -6,7 +6,7 @@ function SessionStatus() {
   const session = useSession()
 
   const { dotClass, textClass, label } = session.isSuccess
-    ? { dotClass: styles.statusReady, textClass: styles.sessionReady, label: '익명 데모 세션' }
+    ? { dotClass: styles.statusReady, textClass: styles.sessionReady, label: '익명 세션' }
     : session.isError
       ? {
           dotClass: styles.statusFailed,
@@ -30,7 +30,6 @@ export function App() {
     <div className={styles.app}>
       <header className={styles.header}>
         <span className={styles.wordmark}>UNWORK</span>
-        <span className={styles.scopeBadge}>MVP · SD 1.5 LoRA</span>
         <SessionStatus />
       </header>
 

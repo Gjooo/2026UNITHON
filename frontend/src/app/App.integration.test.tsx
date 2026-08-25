@@ -40,12 +40,21 @@ describe('App bootstrap', () => {
     expect(new URL(received[0].url).pathname).toBe('/api/v1/session')
   })
 
-  it('announces_the_anonymous_demo_session_in_the_app_shell', async () => {
+  it('announces_the_anonymous_session_in_the_app_shell', async () => {
     renderApp()
 
     expect(screen.getByRole('banner')).toHaveTextContent('UNWORK')
-    expect(screen.getByRole('banner')).toHaveTextContent('MVP · SD 1.5 LoRA')
-    expect(await screen.findByText('익명 데모 세션')).toBeInTheDocument()
+    expect(screen.getByText('세션 준비 중')).toBeInTheDocument()
+    expect(await screen.findByText('익명 세션')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /로그인/ })).not.toBeInTheDocument()
+  })
+
+  it('never_labels_the_product_stage_or_run_type', async () => {
+    renderApp()
+    await screen.findByText('익명 세션')
+
+    // 제품 단계·실행 성격 라벨은 사용자가 부딪히는 제약을 설명하지 못한다.
+    // 제약은 라벨이 아니라 그 자리의 문장으로 밝힌다.
+    expect(document.body.textContent).not.toMatch(/MVP|데모|프로토타입|beta|Beta/)
   })
 })

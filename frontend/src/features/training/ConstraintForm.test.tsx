@@ -9,7 +9,7 @@ describe('ConstraintForm', () => {
     const budget = screen.getByLabelText('최대 예산')
     expect(budget).toHaveValue(null)
     expect(budget).toHaveAccessibleDescription(
-      '예상 비용은 실제 청구액을 제한하지 않으며, Agent는 검증된 데모 실행안 안에서 선택합니다.',
+      '예상 비용은 실제 청구액을 제한하지 않으며, Agent는 사전 검증된 실행안 중에서만 선택합니다.',
     )
 
     const priority = screen.getByRole('radiogroup', { name: '우선순위' })
@@ -28,7 +28,7 @@ describe('ConstraintForm', () => {
     expect(screen.getByText('Stable Diffusion 1.5 LoRA')).toBeInTheDocument()
     expect(screen.getByText('24GB')).toBeInTheDocument()
     expect(screen.getByText('10분')).toBeInTheDocument()
-    expect(screen.getByText('사전 검증된 데모 작업')).toBeInTheDocument()
+    expect(screen.getByText('사전 검증된 고정 작업')).toBeInTheDocument()
 
     expect(
       screen.getByRole('button', { name: 'Agent에게 실행안 요청' }),

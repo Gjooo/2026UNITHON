@@ -26,7 +26,7 @@ export function ConstraintForm({ isSessionReady }: ConstraintFormProps) {
         <div className={styles.scenario}>
           <div className={styles.scenarioHead}>
             <span className={styles.scenarioName}>{DEMO_SCENARIO.name}</span>
-            <span className={styles.verifiedTag}>사전 검증된 데모 작업</span>
+            <span className={styles.verifiedTag}>사전 검증된 고정 작업</span>
           </div>
           <dl className={styles.scenarioFacts}>
             <div>
