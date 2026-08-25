@@ -4,6 +4,19 @@
 >
 > 백엔드 MVP는 이 상태로 동결한다. 이후에는 frontend 연결을 위한 API 계약/CORS/직렬화 호환 및 명백한 결함 수정만 최소 범위로 허용한다.
 
+## 0. 제한된 실행 MVP 현황 (2026-08-26)
+
+아래 문서 이후의 작업은 `/api/v1` 제한 실행 MVP다. 이 문서의 1장 이후 내용은 기존 `/optimize` 계열 API를 설명하며, MVP와 상태 모델을 공유하지 않는다.
+
+- 기준 문서: [../Backend-implementation-plan.md](../Backend-implementation-plan.md), [../API-spec.md](../API-spec.md), [../ERD.md](../ERD.md)
+- 코드 위치: `training_cost_optimizer/mvp/`, `training_cost_optimizer/providers/runpod_lifecycle.py`
+- 구현 완료: Loop 1~4(세션·추천 계약·원자적 승인·전체 생애주기·취소/실패/timeout), Loop 5의 Runpod 어댑터·환경변수 검증·운영 로그·smoke 명령, Loop 6의 CORS·로컬 통합 준비
+- 실제 키로 확인한 것(Pod 생성 없음, 비용 없음): REST API 인증 성공(`GET /v1/pods` 200, 활성 Pod 0개), 데모 GPU 프로필 3개가 모두 Runpod이 제공하는 GPU type임
+- 남은 작업: 공개 HTTPS `BACKEND_PUBLIC_BASE_URL` 확보, 실제 학습 이미지·실행 명령 교체, 그 뒤 `python -m training_cost_optimizer.mvp.smoke --confirm RUNPOD`(과금) 실행, 프런트엔드 화면 연동
+- 전체 테스트: `python -m pytest -q -p no:cacheprovider` → 116 passed (실제 Runpod 호출 없음)
+
+로컬 개발·리허설·smoke 명령은 [README.md](README.md)의 "제한된 실행 MVP" 절에 있다.
+
 ## 1. 프로젝트 목적
 
 AI 학습 작업에 필요한 GPU 조건을 추정하고, 여러 GPU 상품의 시간당 가격과 예상 처리 성능을 조합해 **전체 Job Completion Cost가 가장 낮은 실행 환경**을 추천하는 MVP다.
@@ -415,6 +428,8 @@ fixture 기반 optimizer, analyzer, recommendation, provider 변환, 수수료 �
 
 ## 19. 알려진 문제와 제한사항
 
+- **`providers/runpod.py`의 GraphQL 조회가 현재 403으로 실패한다 (2026-08-26 확인).** RunPod이 `?api_key=` 쿼리 파라미터 인증을 더는 받지 않으며, `Authorization: Bearer` 헤더로 바꿔도 GraphQL endpoint는 403을 반환했다. 같은 키로 REST API(`https://rest.runpod.io/v1`)는 정상 동작한다. `/gpus`, `/optimize`, `/plan`의 라이브 조회 경로가 이 영향을 받는다. MVP 실행 경로는 REST만 쓰므로 영향이 없어 데모 이후로 미뤄둔 상태다.
+- MVP GPU 프로필의 학습 이미지(`unwork/sd15-lora:1`), repository URL, 실행 명령은 아직 placeholder다. 실제 이미지로 교체하기 전에는 Pod가 `RUNNING`에 도달하지 못한다.
 - RunPod Provider 코드는 구현됐지만 실제 API key를 사용한 라이브 응답은 최종 검증 전이다.
 - 실제 Pod 생성 POST 코드도 구현됐지만 이번 작업에서는 호출하지 않았다.
 - 비용은 safety check와 human confirmation 후 `POST /v1/pods`가 성공해 리소스가 생성되는 시점부터 발생할 수 있다. dry-run과 unit test에는 비용이 없다.

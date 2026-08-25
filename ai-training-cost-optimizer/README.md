@@ -1,6 +1,6 @@
 # AI Training Cost Optimizer
 
-첫 클라우드 GPU가 필요한 AI 개발자를 위한 비용 최적화 백엔드 MVP다. 모델, 학습 방식, 데이터셋 크기와 예산을 입력하면 필요한 VRAM을 추정하고 GPU 후보별 예상 학습시간과 **총 예상 결제액**을 비교한다. 현재는 분석, 추천, 계획 생성까지만 수행하며 실제 GPU나 학습을 실행하지 않는다.
+첫 클라우드 GPU가 필요한 AI 개발자를 위한 비용 최적화 백엔드다. 기존 API는 모델, 학습 방식, 데이터셋 크기와 예산을 입력하면 필요한 VRAM과 GPU 후보별 예상 학습시간·**총 예상 결제액**을 비교한다. 별도 `/api/v1` MVP는 고정된 SD 1.5 LoRA workload에 대해 익명 세션, 추천 계약, Runpod 생애주기를 제공한다.
 
 ## 기술 스택
 
@@ -15,7 +15,7 @@ python -m pip install -e ".[test]"
 python -m pytest -q -p no:cacheprovider
 ```
 
-현재 인수인계 기준 전체 테스트 결과는 `80 passed`다.
+테스트에는 실제 Runpod 호출이 포함되지 않는다.
 
 ## Credential 없는 Demo
 
@@ -40,7 +40,51 @@ python -m uvicorn training_cost_optimizer.api:app --reload
 - OpenAPI: `http://127.0.0.1:8000/openapi.json`
 - Health: `http://127.0.0.1:8000/health`
 
-엔드포인트는 `/health`, `/providers`, `/gpus`, `/analyze`, `/optimize`, `/plan`이다. `/optimize` 성공 응답은 `workload`, `candidates`, `recommendation`, `pricing`, `budget`, `estimation_notes`, `assumptions`로 구분된다. 오류는 `{"error":{"code","message","details"}}` 구조다.
+기존 엔드포인트는 `/health`, `/providers`, `/gpus`, `/analyze`, `/optimize`, `/plan`이다. `/optimize` 성공 응답은 `workload`, `candidates`, `recommendation`, `pricing`, `budget`, `estimation_notes`, `assumptions`로 구분된다. 오류는 `{"error":{"code","message","details"}}` 구조다.
+
+### 제한된 실행 MVP
+
+MVP API의 base URL은 `/api/v1`이다.
+
+- `POST /session`: HttpOnly anonymous-session cookie 생성·갱신
+- `POST /jobs`, `GET /jobs/{id}`: 고정 GPU profile 추천 계약 Draft 생성·조회
+- `POST /jobs/{id}/start`, `POST /jobs/{id}/cancel`: 승인·종료 요청
+- `POST /internal/jobs/{id}/completion`: 고정 학습 컨테이너의 내부 완료 callback
+
+기본 `MVP_PROVIDER_MODE=fake`는 비용을 발생시키지 않는다. 실제 실행에는 `MVP_PROVIDER_MODE=runpod`, `RUNPOD_API_KEY`, 공개 HTTPS `BACKEND_PUBLIC_BASE_URL`, 지속 SQLite 경로(`MVP_DATABASE_PATH`)가 필요하다. 배포 시 Uvicorn worker는 반드시 1개로 실행한다. 잘못된 실행 설정은 첫 요청이 아니라 서버 기동 시점에 실패한다.
+
+#### 로컬 개발 모드
+
+`fake` 모드는 Runpod을 호출하지 않고 Pod 생애주기만 흉내 낸다. Pod는 약 10초 뒤 `RUNNING`이 되고, 종료 요청을 받으면 `TERMINATED`가 된다. 로컬에는 학습 컨테이너가 없으므로 완료 화면을 보려면 완료 callback을 직접 호출한다.
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/internal/jobs/<jobId>/completion \
+  -H "Content-Type: application/json" \
+  -d '{"outcome":"SUCCEEDED","exitCode":0,"message":"Training completed"}'
+```
+
+HTTPS가 아닌 로컬 주소로 프런트엔드를 붙일 때는 `MVP_COOKIE_SECURE=false`가 필요하다. `Secure` cookie는 `http://`로 전송되지 않아 세션이 매 요청 끊긴다. 배포 환경에서는 기본값 `true`를 유지한다.
+
+#### 프런트엔드 흐름 리허설
+
+```bash
+python -m training_cost_optimizer.mvp.rehearsal
+```
+
+임시 DB와 `fake` 모드로 서버를 띄워 `frontend-flowchart.txt`의 추천·승인·폴링·완료 callback·취소·세션 격리·CORS를 한 번에 확인한다. Runpod 호출과 비용이 없다.
+
+#### 실제 Runpod smoke test
+
+이 명령만 실제 Pod를 만들고 삭제하며 **비용이 발생한다**. 일반 test suite에는 포함하지 않는다.
+
+```bash
+python -m training_cost_optimizer.mvp.smoke --check-env      # 설정과 GPU 프로필 검증, 비용 없음
+python -m training_cost_optimizer.mvp.smoke --confirm RUNPOD # 프로필별 실제 Pod 생성·삭제
+```
+
+`--check-env`는 환경변수뿐 아니라 각 프로필의 GPU type을 Runpod REST 스펙과 대조한다. Pod를 만들지 않으므로 비용이 없고, Runpod이 제공하지 않는 GPU type을 쓰는 프로필은 과금 전에 걸러진다. 같은 검증은 `--confirm RUNPOD` 실행 앞에서도 수행되며, 문제가 있으면 Pod를 만들지 않고 중단한다.
+
+`--profile <id>`로 하나만 검증할 수 있다. API 키와 Runpod GPU type ID는 출력에 포함되지 않는다.
 
 ## 환경변수
 
@@ -50,10 +94,18 @@ python -m uvicorn training_cost_optimizer.api:app --reload
 - `AGENT_FIXED_FEE_KRW`: 선택적 고정 agent fee
 - `RUNPOD_DEFAULT_IMAGE`: Pod image override. 비어 있으면 문서화된 기본 image 사용
 - `FRONTEND_ORIGINS`: 허용할 frontend origin의 comma-separated 목록
+- `MVP_DATABASE_PATH`: MVP session·Job SQLite 파일 경로
+- `MVP_PROVIDER_MODE`: `fake`(기본) 또는 `runpod`
+- `MVP_MAX_RUNTIME_MINUTES`: Job 최대 실행 시간. 기본값 10이며 데모에서는 10으로 고정한다
+- `MVP_COOKIE_SECURE`: 세션 cookie의 `Secure` 속성. 기본값 `true`이며 로컬 HTTP 개발에서만 `false`
+- `BACKEND_PUBLIC_BASE_URL`: Runpod 컨테이너에서 접근 가능한 공개 HTTPS callback base URL
+- `LOG_LEVEL`: 백엔드 운영 로그 수준. 기본값 `INFO`
 
 credential은 코드, 문서, fixture, 테스트에 저장하지 않는다. `.env.example`은 자동 로드되지 않는다.
 
-기본 개발 CORS origin은 `localhost`와 `127.0.0.1`의 3000/5173 포트다. 배포 환경에서는 `FRONTEND_ORIGINS`를 실제 frontend origin으로 제한해야 하며 wildcard origin은 사용하지 않는다.
+기본 개발 CORS origin은 `localhost`와 `127.0.0.1`의 3000/5173 포트다. 배포 환경에서는 `FRONTEND_ORIGINS`를 실제 frontend origin으로 제한해야 하며 wildcard origin은 사용하지 않는다. MVP는 세션 cookie를 함께 보내므로 `*`는 브라우저에서도 거부된다. 설정에 포함돼 있으면 무시하고 경고를 남긴다.
+
+운영 로그에는 Job ID, Pod ID, 공개 profile ID만 남는다. Runpod API 키, GPU type ID, image, 실행 명령은 응답과 로그 어디에도 남기지 않는다.
 
 ## Frontend API 계약
 
