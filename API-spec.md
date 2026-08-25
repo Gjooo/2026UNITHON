@@ -1,6 +1,6 @@
 # UNWORK 학습 실행 Agent — 최소 MVP API 명세
 
-`MVP-implementation-plan.md`와 `ERD.md`를 기준으로 한 단일 Golden Path 데모용 REST API다. API의 중심 리소스는 `TrainingJob`이며, GPU Pod·비용·artifact는 사용자 API로 노출하지 않는다.
+`MVP-implementation-plan.md`와 `ERD.md`를 기준으로 한 제한된 GPU 선택·실행 데모용 REST API다. 사용자는 예산과 우선순위만 제시하고, Agent가 사전 검증한 GPU 실행 프로필을 비교해 하나를 추천한다. API의 중심 리소스는 추천 실행 계약을 포함한 `TrainingJob`이다.
 
 ## 1. 공통 규약
 
@@ -8,9 +8,10 @@
 - Content-Type: `application/json`
 - 모든 ID: UUID 문자열
 - 모든 시간: ISO 8601 UTC
-- MVP 실행 Provider: 팀 Runpod 계정의 단일 GPU Pod
+- MVP 실행 Provider: 팀 Runpod 계정
 - 웹 사용자는 로그인 없이 익명 세션으로 Job을 분리한다.
 - 팀 Runpod API 키는 서버 환경변수 또는 Secret Vault에서만 읽는다. 클라이언트·DB·응답에는 노출하지 않는다.
+- 서버는 데모 전에 검증한 2~3개 GPU 실행 프로필만 비교한다. 프로필의 GPU type ID, 이미지, 실행 명령은 서버 상수다.
 
 ### 익명 세션
 
@@ -33,8 +34,8 @@ Response: `201 Created`
 ```json
 {
   "error": {
-    "code": "DEMO_BUSY",
-    "message": "다른 데모 실행이 진행 중입니다. 잠시 후 다시 시도해 주세요."
+    "code": "NO_ELIGIBLE_PLAN",
+    "message": "입력한 예산 안에서 실행할 수 있는 데모 GPU 후보가 없습니다."
   }
 }
 ```
@@ -45,9 +46,26 @@ Response: `201 Created`
 | 401 | `SESSION_REQUIRED`, `SESSION_EXPIRED` | 세션 쿠키 없음 또는 만료 |
 | 404 | `JOB_NOT_FOUND` | Job이 없거나 현재 세션의 Job이 아님 |
 | 409 | `INVALID_JOB_STATE`, `DEMO_BUSY`, `EXECUTION_ALREADY_USED` | 현재 상태에서 실행·취소할 수 없거나 실행 제한에 도달 |
+| 422 | `NO_ELIGIBLE_PLAN` | 최대 예산 안의 데모 GPU 후보가 없음 |
 | 503 | `RUNPOD_UNAVAILABLE` | Pod 생성 또는 상태 확인 실패 |
 
 ## 2. 핵심 리소스
+
+### 제약 입력
+
+`POST /jobs`는 아래 제약만 받는다. 학습 코드·GPU·Provider는 사용자 입력이 아니다.
+
+```json
+{
+  "maxBudgetKrw": 10000,
+  "priority": "CHEAPEST"
+}
+```
+
+| 필드 | 규칙 |
+| --- | --- |
+| `maxBudgetKrw` | 0보다 큰 정수. 추천 단계의 **예상 GPU 비용** 상한이며, 실제 청구액을 제한하지 않는다. |
+| `priority` | `CHEAPEST`, `BALANCED`, `FASTEST` 중 하나. 각각 저비용·균형·빠른 완료를 뜻한다. |
 
 ### TrainingJob
 
@@ -58,8 +76,42 @@ Response: `201 Created`
     "name": "Stable Diffusion 1.5 LoRA",
     "repositoryUrl": "https://github.com/example/golden-path",
     "executionCommand": "./run-demo-training.sh",
-    "gpuType": "NVIDIA RTX 4090",
+    "requiredVramGb": 24,
     "maxRuntimeMinutes": 10
+  },
+  "constraint": {
+    "maxBudgetKrw": 10000,
+    "priority": "CHEAPEST"
+  },
+  "executionPlan": {
+    "priceDataType": "DEMO_SNAPSHOT",
+    "estimateDisclaimer": "예상 시간과 GPU 비용은 데모 전 검증한 프로필 스냅샷이며 실제 청구액을 보장하지 않습니다.",
+    "candidates": [
+      {
+        "profileId": "runpod-rtx4090-v1",
+        "provider": "Runpod",
+        "gpuType": "NVIDIA RTX 4090",
+        "estimatedRuntimeMinutes": 9,
+        "estimatedGpuCostKrw": 450,
+        "eligibility": "ELIGIBLE"
+      },
+      {
+        "profileId": "runpod-a100-v1",
+        "provider": "Runpod",
+        "gpuType": "NVIDIA A100 40GB",
+        "estimatedRuntimeMinutes": 6,
+        "estimatedGpuCostKrw": 780,
+        "eligibility": "ELIGIBLE"
+      }
+    ],
+    "recommended": {
+      "profileId": "runpod-rtx4090-v1",
+      "provider": "Runpod",
+      "gpuType": "NVIDIA RTX 4090",
+      "estimatedRuntimeMinutes": 9,
+      "estimatedGpuCostKrw": 450,
+      "reason": "예산 안 후보 중 예상 GPU 비용이 가장 낮습니다."
+    }
   },
   "status": "DRAFT",
   "failureMessage": null,
@@ -71,7 +123,22 @@ Response: `201 Created`
 }
 ```
 
-`scenario`의 값은 읽기 전용이다. 사용자는 Repository, 실행 명령, GPU, 최대 실행시간을 바꿀 수 없다.
+- `scenario`은 고정 workload를 설명하는 읽기 전용 값이다.
+- `executionPlan`은 Job 생성 시 계산한 스냅샷이며, 사용자 요청으로 GPU를 바꿀 수 없다.
+- `candidates`에는 VRAM 조건을 만족한 데모 프로필을 모두 표시한다. 예산을 넘는 후보는 `eligibility: OVER_BUDGET`으로 보이지만 추천되지 않는다.
+- `priceDataType: DEMO_SNAPSHOT`은 이 값이 실시간 가격이나 실제 청구액이 아님을 뜻한다.
+
+### 추천 정책
+
+예산 안의 후보만 대상으로 아래의 결정적 정책을 적용한다. 동점이면 예상 GPU 비용, 예상 실행시간, `profileId` 순으로 정렬한다.
+
+| `priority` | 선택 정책 |
+| --- | --- |
+| `CHEAPEST` | 예상 GPU 비용이 가장 낮은 후보 |
+| `FASTEST` | 예상 실행시간이 가장 짧은 후보 |
+| `BALANCED` | `0.5 × (후보 비용 / 최저 비용) + 0.5 × (후보 시간 / 최단 시간)` 점수가 가장 낮은 후보 |
+
+실행 전에는 추천 결과를 다시 계산하거나 가격을 갱신하지 않는다. 실행 계약은 Job 생성 시점의 추천 스냅샷으로 고정한다.
 
 ### Job 상태
 
@@ -83,21 +150,28 @@ Response: `201 Created`
 
 ### `POST /jobs`
 
-고정 Golden Path Job을 생성한다. Pod를 만들지 않으며 비용도 발생하지 않는다.
+최대 예산·우선순위를 받아 GPU 후보를 비교하고, Agent 추천 실행 계약이 담긴 Draft Job을 만든다. Pod를 만들지 않으며 비용도 발생하지 않는다.
 
-Request body: 없음
+Request body: [제약 입력](#제약-입력)
 
 Response: `201 Created` — `TrainingJob` (`status: DRAFT`)
 
+처리 규칙:
+
+1. 서버는 고정 workload의 필요 VRAM을 기준으로 GPU 프로필을 필터한다.
+2. 각 후보의 예상 실행시간·예상 GPU 비용을 계산한다.
+3. `estimatedGpuCostKrw <= maxBudgetKrw` 후보가 없으면 `422 NO_ELIGIBLE_PLAN`을 반환하고 Job을 만들지 않는다.
+4. 추천 정책으로 하나를 선택하고, 후보 비교 결과와 선택 근거를 `selection_snapshot`에 저장한다.
+
 ### `GET /jobs/{jobId}`
 
-현재 세션이 소유한 Job의 상태를 반환한다. 프런트엔드는 실행 중일 때 2~3초 간격으로 이 API를 폴링한다.
+현재 세션이 소유한 Job의 실행 계약과 상태를 반환한다. 프런트엔드는 실행 중일 때 2~3초 간격으로 이 API를 폴링한다.
 
 Response: `200 OK` — `TrainingJob`
 
 ### `POST /jobs/{jobId}/start`
 
-고정 실행 계획을 승인하고 실제 Pod 생성을 시작한다.
+Agent가 추천한 고정 실행 계약을 승인하고 실제 Pod 생성을 시작한다.
 
 Request body: 없음
 
@@ -115,7 +189,7 @@ Response: `202 Accepted`
 1. Job은 `DRAFT`여야 한다.
 2. 세션의 `execution_used`가 `false`여야 한다. Pod 생성을 시작하면 `true`로 변경한다.
 3. 서비스 전체에 `PROVISIONING`, `RUNNING`, `TERMINATING` Job이 있으면 `409 DEMO_BUSY`를 반환한다. 대기열은 제공하지 않는다.
-4. 서버는 팀 Runpod 키로 사전 검증된 이미지·단일 GPU·최대 10분 설정의 Pod를 생성한다.
+4. 서버는 Job의 추천 프로필에 고정된 Runpod GPU type ID·이미지·실행 명령·최대 10분 설정으로 Pod를 생성한다.
 
 ### `POST /jobs/{jobId}/cancel`
 
@@ -165,8 +239,8 @@ Response: `204 No Content`
 ## 5. 서버 실행 규칙
 
 1. 백엔드의 장시간 실행 프로세스가 Pod 생성, 상태 확인, timeout, 종료 처리를 소유한다. 브라우저를 닫아도 실행 처리는 계속된다.
-2. 학습 컨테이너는 사전 검증된 이미지와 고정 명령으로 실행된다. 최대 10분 timeout을 넘기면 학습을 중단한다.
+2. 학습 컨테이너는 Job의 추천 프로필에 고정된 이미지와 명령으로 실행된다. 최대 10분 timeout을 넘기면 학습을 중단한다.
 3. 성공, 실패, 취소, timeout의 모든 경로에서 Pod 삭제를 요청하고 Runpod 상태 조회로 종료를 확인한다.
 4. Pod 생성 실패, 학습 오류, timeout은 재시도 없이 `FAILED`와 짧은 원인 메시지로 표시한다.
-5. 성공 화면에는 `Training completed` 로그, 종료 코드, 실행 시간, GPU 정보, Pod 자동 종료 완료를 표시한다.
-6. MVP는 artifact 저장·다운로드, 사용자 API 키 연결, GPU 비교, 비용 계산·가드레일, OOM 재계획을 제공하지 않는다.
+5. 성공 화면에는 `Training completed` 로그, 종료 코드, 실행 시간, Agent가 선택한 GPU 정보, Pod 자동 종료 완료를 표시한다.
+6. MVP는 임의 코드 실행, BYOK, 다중 Provider 비교, 실시간 가격·비용 계측, artifact, OOM 재계획을 제공하지 않는다.
