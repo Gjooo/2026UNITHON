@@ -103,7 +103,6 @@ curl -X POST http://127.0.0.1:8000/api/v1/internal/jobs/<jobId>/completion \
 | `GET /providers`, `POST /providers/{id}/credential` | 없음. 팀 단일 계정 |
 | `pendingDecision`, `POST /jobs/{id}/decisions/{id}` | 없음 |
 | `PLAN_EXPIRED` (승인 직전 가격 재검증) | 없음. 스냅샷 가격이라 재검증 대상이 없다 |
-| 세션 응답의 `executionAllowance` | 없음. `expiresAt`만 |
 
 ## 5. 프런트엔드에서 고쳐야 할 것 하나
 
