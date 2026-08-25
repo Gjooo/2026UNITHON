@@ -180,6 +180,16 @@ def _cookie_secure() -> bool:
     raise MvpConfigError("MVP_COOKIE_SECURE must be true or false")
 
 
+def real_execution_available(provider_mode: str) -> bool:
+    """실제 실행을 고를 수 있는 배포인지.
+
+    ``fake`` 로 뜬 서버에는 Runpod 자격증명이 없을 수 있으므로 시뮬레이터만
+    허용한다. 실제 실행을 요청받아도 Pod 를 만들 수 없다.
+    """
+
+    return provider_mode == "runpod"
+
+
 def _provider_mode() -> str:
     mode = os.getenv("MVP_PROVIDER_MODE", "fake").strip().lower() or "fake"
     if mode not in PROVIDER_MODES:

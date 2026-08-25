@@ -323,7 +323,13 @@ def test_fake_provider_mode_never_reaches_the_runpod_client(tmp_path, monkeypatc
 
     service = get_mvp_service()
 
-    assert isinstance(service.runner.worker.provider, SimulatedRunpodLifecycleProvider)
+    # 두 모드 모두 시뮬레이터로 연결된다. Runpod 자격증명이 없는 배포에서
+    # 실제 실행을 요청해도 Pod 가 만들어지지 않는다.
+    assert not service.real_execution_available
+    assert all(
+        isinstance(provider, SimulatedRunpodLifecycleProvider)
+        for provider in service.runner.worker.providers.values()
+    )
 
 
 def test_session_cookie_is_secure_unless_local_http_is_opted_into(monkeypatch, tmp_path):
@@ -516,5 +522,79 @@ def test_cookie_samesite_supports_a_cross_site_frontend(monkeypatch, tmp_path):
         monkeypatch.setenv("MVP_COOKIE_SAMESITE", "diagonal")
         with pytest.raises(MvpConfigError):
             get_settings()
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_execution_mode_is_chosen_per_job(tmp_path):
+    """시연자가 작업마다 시뮬레이터와 실제 실행을 고른다."""
+
+    from training_cost_optimizer.mvp.domain import ExecutionMode
+
+    repository = SQLiteMvpRepository(tmp_path / "mvp.sqlite3")
+    simulated = FakeRunpodLifecycleProvider()
+    real = FakeRunpodLifecycleProvider()
+    worker = JobLifecycleWorker(
+        repository, {ExecutionMode.SIMULATED: simulated, ExecutionMode.REAL: real}
+    )
+    service = JobApplicationService(
+        repository, runner=FakeJobRunner(), real_execution_available=True
+    )
+    app.dependency_overrides[get_mvp_service] = lambda: service
+    try:
+        client = TestClient(app, base_url="https://testserver")
+        assert client.post("/api/v1/session").json()["realExecutionAvailable"] is True
+
+        job = client.post(
+            "/api/v1/jobs",
+            json={"maxBudgetKrw": 1_000, "priority": "CHEAPEST", "executionMode": "REAL"},
+        ).json()
+        assert job["executionMode"] == "REAL"
+
+        client.post(f"/api/v1/jobs/{job['id']}/start")
+        worker.run_once(job["id"])
+
+        # 실제 모드 작업은 실제 Provider 로만 간다.
+        assert len(real.created_pods) == 1
+        assert simulated.created_pods == []
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_execution_mode_defaults_to_the_simulator(tmp_path):
+    service = JobApplicationService(
+        SQLiteMvpRepository(tmp_path / "mvp.sqlite3"), runner=FakeJobRunner()
+    )
+    app.dependency_overrides[get_mvp_service] = lambda: service
+    try:
+        client = TestClient(app, base_url="https://testserver")
+        session = client.post("/api/v1/session").json()
+        assert session["realExecutionAvailable"] is False
+
+        job = client.post(
+            "/api/v1/jobs", json={"maxBudgetKrw": 1_000, "priority": "CHEAPEST"}
+        ).json()
+        assert job["executionMode"] == "SIMULATED"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_real_execution_is_refused_where_runpod_is_not_configured(tmp_path):
+    """Runpod 설정이 없는 배포는 실제 실행 요청을 만들기 전에 거절한다."""
+
+    service = JobApplicationService(
+        SQLiteMvpRepository(tmp_path / "mvp.sqlite3"), runner=FakeJobRunner()
+    )
+    app.dependency_overrides[get_mvp_service] = lambda: service
+    try:
+        client = TestClient(app, base_url="https://testserver")
+        client.post("/api/v1/session")
+        response = client.post(
+            "/api/v1/jobs",
+            json={"maxBudgetKrw": 1_000, "priority": "CHEAPEST", "executionMode": "REAL"},
+        )
+        assert response.status_code == 409
+        assert response.json()["error"]["code"] == "REAL_EXECUTION_UNAVAILABLE"
+        assert service.repository.count_jobs() == 0
     finally:
         app.dependency_overrides.clear()

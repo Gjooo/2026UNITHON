@@ -13,7 +13,15 @@ from .config import (
     SESSION_TTL_DAYS,
     WORKLOAD,
 )
-from .domain import AnonymousSession, MvpJob, MvpJobStatus, MvpServiceError, Priority, utc_now
+from .domain import (
+    AnonymousSession,
+    ExecutionMode,
+    MvpJob,
+    MvpJobStatus,
+    MvpServiceError,
+    Priority,
+    utc_now,
+)
 from .recommendation import ProfileRecommendationService
 from .repository import SQLiteMvpRepository
 from .runner import FakeJobRunner, JobRunner
@@ -26,6 +34,7 @@ class JobApplicationService:
         recommendation_service: ProfileRecommendationService | None = None,
         runner: JobRunner | None = None,
         max_runtime_minutes: int = WORKLOAD.max_runtime_minutes,
+        real_execution_available: bool = False,
     ) -> None:
         self.repository = repository
         self.recommendation_service = recommendation_service or ProfileRecommendationService()
@@ -33,6 +42,9 @@ class JobApplicationService:
         # The limit is stored per Job so a configuration change never alters a
         # contract a user already approved.
         self.max_runtime_minutes = max_runtime_minutes
+        # 실제 실행을 고를 수 있는지는 배포 설정이 정한다. 클라이언트가 요청해도
+        # Runpod 자격증명이 없는 서버에서는 Pod 를 만들 수 없다.
+        self.real_execution_available = real_execution_available
 
     def create_or_refresh_session(self, raw_token: str | None) -> tuple[AnonymousSession, str]:
         now = utc_now()
@@ -65,9 +77,20 @@ class JobApplicationService:
         return session, token
 
     def create_draft_job(
-        self, *, raw_session_token: str | None, max_budget_krw: int, priority: Priority
+        self,
+        *,
+        raw_session_token: str | None,
+        max_budget_krw: int,
+        priority: Priority,
+        execution_mode: ExecutionMode = ExecutionMode.SIMULATED,
     ) -> MvpJob:
         session = self.require_session(raw_session_token)
+        if execution_mode is ExecutionMode.REAL and not self.real_execution_available:
+            raise MvpServiceError(
+                "REAL_EXECUTION_UNAVAILABLE",
+                "이 환경에서는 실제 GPU 실행을 사용할 수 없습니다.",
+                409,
+            )
         recommendation = self.recommendation_service.recommend(
             max_budget_krw=max_budget_krw, priority=priority
         )
@@ -90,6 +113,7 @@ class JobApplicationService:
             gpu_type=recommendation.selected_gpu_type,
             status=MvpJobStatus.DRAFT,
             max_runtime_minutes=self.max_runtime_minutes,
+            execution_mode=execution_mode,
             created_at=utc_now(),
         )
         self.repository.create_job(job)

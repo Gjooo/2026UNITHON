@@ -15,7 +15,7 @@ from typing import Callable, Protocol
 from training_cost_optimizer.providers.runpod_lifecycle import PodStatus, RunpodLifecycleProvider
 
 from .config import profile_for_id
-from .domain import FINAL_STATUSES, MvpJobStatus, utc_now
+from .domain import FINAL_STATUSES, ExecutionMode, MvpJobStatus, utc_now
 from .repository import SQLiteMvpRepository
 
 
@@ -43,12 +43,19 @@ class JobLifecycleWorker:
     def __init__(
         self,
         repository: SQLiteMvpRepository,
-        provider: RunpodLifecycleProvider,
+        provider: RunpodLifecycleProvider | dict[ExecutionMode, RunpodLifecycleProvider],
         clock: Callable[[], datetime] = utc_now,
     ) -> None:
         self.repository = repository
-        self.provider = provider
+        # 작업마다 실행 모드가 다를 수 있다. 하나만 주면 모든 모드가 그것을 쓴다.
+        self.providers: dict[ExecutionMode, RunpodLifecycleProvider] = (
+            dict(provider) if isinstance(provider, dict)
+            else {mode: provider for mode in ExecutionMode}
+        )
         self.clock = clock
+
+    def provider_for(self, job) -> RunpodLifecycleProvider:
+        return self.providers[job.execution_mode]
 
     def run_once(self, job_id: str) -> MvpJobStatus:
         job = self.repository.get_job(job_id)
@@ -56,6 +63,7 @@ class JobLifecycleWorker:
             return MvpJobStatus.FAILED
 
         now = self.clock()
+        provider = self.provider_for(job)
         if (
             job.status in {MvpJobStatus.PROVISIONING, MvpJobStatus.RUNNING}
             and job.started_at is not None
@@ -89,7 +97,7 @@ class JobLifecycleWorker:
         if job.status is MvpJobStatus.PROVISIONING:
             if job.runpod_pod_id is None:
                 try:
-                    pod_id = self.provider.create_pod(profile_for_id(job.selected_profile_id), job.id)
+                    pod_id = provider.create_pod(profile_for_id(job.selected_profile_id), job.id)
                 except Exception as exc:
                     logger.error(
                         "job=%s profile=%s pod creation failed: %s",
@@ -107,7 +115,7 @@ class JobLifecycleWorker:
                 )
                 job = self.repository.attach_pod(job_id=job.id, pod_id=pod_id)
             try:
-                pod_status = self.provider.get_pod_status(job.runpod_pod_id)
+                pod_status = provider.get_pod_status(job.runpod_pod_id)
             except Exception as exc:
                 logger.error("job=%s pod=%s status check failed: %s", job.id, job.runpod_pod_id, exc)
                 return self.repository.request_termination(
@@ -133,8 +141,8 @@ class JobLifecycleWorker:
                     job_id=job.id, terminated_at=now
                 ).status
             try:
-                self.provider.delete_pod(job.runpod_pod_id)
-                pod_status = self.provider.get_pod_status(job.runpod_pod_id)
+                provider.delete_pod(job.runpod_pod_id)
+                pod_status = provider.get_pod_status(job.runpod_pod_id)
             except Exception as exc:
                 logger.error("job=%s pod=%s termination failed: %s", job.id, job.runpod_pod_id, exc)
                 self.repository.record_termination_error(

@@ -27,11 +27,14 @@ Response: `201 Created`
 ```json
 {
   "expiresAt": "2026-09-01T12:00:00Z",
-  "executionAllowance": { "used": 0, "limit": 1 }
+  "executionAllowance": { "used": 0, "limit": 1 },
+  "realExecutionAvailable": true
 }
 ```
 
 `executionAllowance`는 이 세션이 실제 비용을 발생시킬 수 있는 횟수와 이미 사용한 횟수다. 화면은 실행 버튼을 누르기 전에 남은 횟수를 안내할 수 있다. 운영 정책 값이며 제품 기능이 아니다.
+
+`realExecutionAvailable`은 이 배포에서 실제 GPU 실행을 고를 수 있는지를 뜻한다. `false`면 화면은 실제 실행 선택지를 감춘다. Runpod 자격증명이 없는 배포에서 실제 실행을 요청하면 `409 REAL_EXECUTION_UNAVAILABLE`이다.
 
 ### 공통 오류 응답
 
@@ -50,6 +53,7 @@ Response: `201 Created`
 | 401 | `SESSION_REQUIRED`, `SESSION_EXPIRED` | 세션 쿠키 없음 또는 만료 |
 | 404 | `JOB_NOT_FOUND` | Job이 없거나 현재 세션의 Job이 아님 |
 | 409 | `INVALID_JOB_STATE`, `DEMO_BUSY`, `EXECUTION_ALREADY_USED` | 현재 상태에서 실행·취소할 수 없거나 실행 제한에 도달 |
+| 409 | `REAL_EXECUTION_UNAVAILABLE` | 이 배포에서 실제 GPU 실행을 쓸 수 없음 |
 | 422 | `NO_ELIGIBLE_PLAN` | 최대 예산 안의 데모 GPU 후보가 없음 |
 | 503 | `RUNPOD_UNAVAILABLE` | Pod 생성 또는 상태 확인 실패 |
 
@@ -62,7 +66,8 @@ Response: `201 Created`
 ```json
 {
   "maxBudgetKrw": 10000,
-  "priority": "CHEAPEST"
+  "priority": "CHEAPEST",
+  "executionMode": "SIMULATED"
 }
 ```
 
@@ -70,6 +75,9 @@ Response: `201 Created`
 | --- | --- |
 | `maxBudgetKrw` | 0보다 큰 정수. 추천 단계의 **예상 GPU 비용** 상한이며, 실제 청구액을 제한하지 않는다. |
 | `priority` | `CHEAPEST`, `BALANCED`, `FASTEST` 중 하나. 각각 저비용·균형·빠른 완료를 뜻한다. |
+| `executionMode` | `SIMULATED`(기본) 또는 `REAL`. 생략하면 비용이 발생하지 않는 시뮬레이터로 실행한다. |
+
+`executionMode`는 제품 기능이 아니라 시연 제어값이다. `SIMULATED`는 실제 GPU를 만들지 않고 같은 상태 전이를 재현하므로 비용이 없다. `REAL`은 Runpod GPU를 실제로 만들고 과금된다. 승인 이후에는 바꿀 수 없으며 Job 응답의 `executionMode`로 확인한다.
 
 ### TrainingJob
 
@@ -87,6 +95,7 @@ Response: `201 Created`
     "maxBudgetKrw": 10000,
     "priority": "CHEAPEST"
   },
+  "executionMode": "SIMULATED",
   "executionPlan": {
     "priceDataType": "DEMO_SNAPSHOT",
     "estimateDisclaimer": "예상 시간과 GPU 비용은 사전 검증한 실행 프로필 기준 추정치이며 실제 청구액을 보장하지 않습니다.",

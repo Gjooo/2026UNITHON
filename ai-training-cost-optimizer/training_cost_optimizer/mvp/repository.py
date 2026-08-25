@@ -9,6 +9,7 @@ from pathlib import Path
 
 from .domain import (
     AnonymousSession,
+    ExecutionMode,
     MvpJob,
     MvpJobStatus,
     MvpServiceError,
@@ -65,6 +66,7 @@ class SQLiteMvpRepository:
                     exit_code INTEGER,
                     completion_log TEXT,
                     max_runtime_minutes INTEGER NOT NULL,
+                    execution_mode TEXT NOT NULL DEFAULT 'SIMULATED',
                     created_at TEXT NOT NULL,
                     started_at TEXT,
                     finished_at TEXT,
@@ -74,6 +76,22 @@ class SQLiteMvpRepository:
                 CREATE INDEX IF NOT EXISTS idx_training_jobs_owner ON training_jobs(owner_session_id);
                 CREATE INDEX IF NOT EXISTS idx_training_jobs_status ON training_jobs(status);
                 """
+            )
+            self._add_missing_columns(connection)
+
+    @staticmethod
+    def _add_missing_columns(connection: sqlite3.Connection) -> None:
+        """이미 배포된 DB 를 새 컬럼에 맞춘다.
+
+        지속 볼륨을 쓰므로 CREATE TABLE IF NOT EXISTS 만으로는 기존 파일이
+        갱신되지 않는다. 없는 컬럼만 채워 넣는다.
+        """
+
+        existing = {row["name"] for row in connection.execute("PRAGMA table_info(training_jobs)")}
+        if "execution_mode" not in existing:
+            connection.execute(
+                "ALTER TABLE training_jobs ADD COLUMN execution_mode TEXT NOT NULL "
+                "DEFAULT 'SIMULATED'"
             )
 
     def create_session(self, session: AnonymousSession) -> None:
@@ -116,9 +134,9 @@ class SQLiteMvpRepository:
                     id, owner_session_id, golden_path_version, selection_policy_version,
                     max_budget_krw, priority, selection_snapshot, selected_profile_id, gpu_type,
                     runpod_pod_id, status, requested_final_status, failure_message, exit_code,
-                    completion_log, max_runtime_minutes, created_at, started_at, finished_at,
-                    pod_terminated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    completion_log, max_runtime_minutes, execution_mode, created_at, started_at,
+                    finished_at, pod_terminated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     job.id,
@@ -137,6 +155,7 @@ class SQLiteMvpRepository:
                     job.exit_code,
                     job.completion_log,
                     job.max_runtime_minutes,
+                    job.execution_mode.value,
                     to_utc_iso(job.created_at),
                     to_utc_iso(job.started_at),
                     to_utc_iso(job.finished_at),
@@ -428,6 +447,7 @@ class SQLiteMvpRepository:
             exit_code=row["exit_code"],
             completion_log=row["completion_log"],
             max_runtime_minutes=row["max_runtime_minutes"],
+            execution_mode=ExecutionMode(row["execution_mode"]),
             created_at=from_utc_iso(row["created_at"]),
             started_at=from_utc_iso(row["started_at"]),
             finished_at=from_utc_iso(row["finished_at"]),

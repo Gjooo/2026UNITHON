@@ -16,8 +16,9 @@ from .config import (
     WORKLOAD,
     MvpConfigError,
     get_settings,
+    real_execution_available,
 )
-from .domain import MvpJob, MvpServiceError, Priority, to_utc_iso
+from .domain import ExecutionMode, MvpJob, MvpServiceError, Priority, to_utc_iso
 from .repository import SQLiteMvpRepository
 from .runner import BackgroundJobRunner, JobLifecycleWorker
 from .simulated_provider import SimulatedRunpodLifecycleProvider
@@ -38,6 +39,10 @@ class CreateJobRequest(BaseModel):
 
     max_budget_krw: int = Field(gt=0, alias="maxBudgetKrw")
     priority: Priority
+    # 시연 현장에서 진행자가 고른다. 기본값은 비용이 없는 시뮬레이터다.
+    execution_mode: ExecutionMode = Field(
+        default=ExecutionMode.SIMULATED, alias="executionMode"
+    )
 
 
 class CompletionRequest(BaseModel):
@@ -72,18 +77,26 @@ def _default_mvp_service(
     """
 
     repository = SQLiteMvpRepository(database_path)
-    if provider_mode == "runpod":
-        provider = RunpodRestLifecycleProvider.from_environment()
+    # 시뮬레이터는 항상 쓸 수 있다. 실제 실행은 Runpod 설정이 갖춰진 배포에서만.
+    providers = {ExecutionMode.SIMULATED: SimulatedRunpodLifecycleProvider()}
+    real_available = real_execution_available(provider_mode)
+    if real_available:
+        providers[ExecutionMode.REAL] = RunpodRestLifecycleProvider.from_environment()
     else:
-        provider = SimulatedRunpodLifecycleProvider()
+        providers[ExecutionMode.REAL] = providers[ExecutionMode.SIMULATED]
     logger.info(
         "MVP service ready: provider_mode=%s max_runtime_minutes=%s database=%s",
         provider_mode,
         max_runtime_minutes,
         database_path,
     )
-    runner = BackgroundJobRunner(JobLifecycleWorker(repository, provider))
-    return JobApplicationService(repository, runner=runner, max_runtime_minutes=max_runtime_minutes)
+    runner = BackgroundJobRunner(JobLifecycleWorker(repository, providers))
+    return JobApplicationService(
+        repository,
+        runner=runner,
+        max_runtime_minutes=max_runtime_minutes,
+        real_execution_available=real_available,
+    )
 
 
 @router.post("/session", status_code=201)
@@ -110,6 +123,8 @@ def create_session(
             "used": int(session.execution_used),
             "limit": SESSION_EXECUTION_LIMIT,
         },
+        # 화면이 "실제 실행" 선택지를 보여줄지 판단하는 값이다.
+        "realExecutionAvailable": service.real_execution_available,
     }
 
 
@@ -123,6 +138,7 @@ def create_job(
         raw_session_token=session_token,
         max_budget_krw=payload.max_budget_krw,
         priority=payload.priority,
+        execution_mode=payload.execution_mode,
     )
     return serialize_job(job)
 
@@ -187,6 +203,7 @@ def serialize_job(job: MvpJob) -> dict:
             "maxBudgetKrw": job.max_budget_krw,
             "priority": job.priority.value,
         },
+        "executionMode": job.execution_mode.value,
         "executionPlan": job.selection_snapshot,
         "status": job.status.value,
         "failureMessage": job.failure_message,

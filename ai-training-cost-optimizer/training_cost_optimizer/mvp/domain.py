@@ -13,6 +13,17 @@ class Priority(str, Enum):
     FASTEST = "FASTEST"
 
 
+class ExecutionMode(str, Enum):
+    """이 작업을 무엇으로 실행할지.
+
+    시연 현장에서 진행자가 고른다. 시뮬레이터는 같은 상태 전이를 즉시 재현하고
+    비용이 없다. 실제 실행은 Runpod GPU를 만들고 과금된다.
+    """
+
+    SIMULATED = "SIMULATED"
+    REAL = "REAL"
+
+
 class MvpJobStatus(str, Enum):
     DRAFT = "DRAFT"
     PROVISIONING = "PROVISIONING"
@@ -70,6 +81,7 @@ class MvpJob:
     status: MvpJobStatus
     max_runtime_minutes: int
     created_at: datetime
+    execution_mode: ExecutionMode = ExecutionMode.SIMULATED
     runpod_pod_id: str | None = None
     requested_final_status: MvpJobStatus | None = None
     failure_message: str | None = None
