@@ -1,0 +1,41 @@
+.backdrop {
+  align-items: center;
+  background: rgba(23, 23, 23, 0.4);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: var(--space-lg);
+  position: fixed;
+  z-index: 10;
+}
+
+.dialog {
+  background: var(--canvas);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-3);
+  display: grid;
+  gap: var(--space-lg);
+  max-height: 100%;
+  max-width: 480px;
+  overflow-y: auto;
+  padding: var(--space-xxl);
+  width: 100%;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-md);
+  justify-content: flex-end;
+}
+
+@media (max-width: 480px) {
+  .actions {
+    flex-direction: column-reverse;
+  }
+}

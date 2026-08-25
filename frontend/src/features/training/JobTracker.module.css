@@ -1,0 +1,19 @@
+.tracker {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  display: grid;
+  gap: var(--space-lg);
+  padding: var(--space-xxl);
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.gpu {
+  color: var(--ink-mute);
+}

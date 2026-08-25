@@ -73,3 +73,16 @@ export function createJob(input: CreateJobInput, signal?: AbortSignal): Promise<
     signal,
   })
 }
+
+export interface JobMutationResponse {
+  id: string
+  status: JobStatus
+}
+
+/**
+ * Agent가 추천한 고정 실행 계약을 승인하고 실행을 시작한다.
+ * 본문이 없다. 클라이언트가 GPU·Provider·명령을 바꿀 수 없다.
+ */
+export function startJob(jobId: string, signal?: AbortSignal): Promise<JobMutationResponse> {
+  return apiFetch<JobMutationResponse>(`/jobs/${jobId}/start`, { method: 'POST', signal })
+}

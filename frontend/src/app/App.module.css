@@ -97,3 +97,7 @@
   margin-bottom: var(--space-lg);
   padding: var(--space-md) var(--space-lg);
 }
+
+.panelGap {
+  margin-top: var(--space-xl);
+}
