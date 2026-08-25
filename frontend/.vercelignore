@@ -1,0 +1,4 @@
+# tsconfig가 include하는 파일은 제외하면 안 된다. 빌드가 `tsc --noEmit`을 돌린다.
+e2e
+test-results
+playwright-report

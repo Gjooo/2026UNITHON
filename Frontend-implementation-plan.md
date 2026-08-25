@@ -85,6 +85,25 @@ curl -X POST http://127.0.0.1:8000/api/v1/internal/jobs/<jobId>/completion \
   -d '{"outcome":"SUCCEEDED","exitCode":0,"message":"Training completed"}'
 ```
 
+### 배포 (Vercel + Railway)
+
+브라우저가 배포 도메인 하나만 보게 만든다. 세션 쿠키가 `HttpOnly; Secure; SameSite=Lax`이므로 프런트와 백엔드를 다른 origin으로 직접 붙이면 **쿠키가 전송되지 않아 매 요청 세션이 끊긴다.** reverse proxy는 선택이 아니라 동작 조건이다.
+
+`vercel.json`이 `/api/*`를 백엔드로 넘긴다. Vercel이 서버 측에서 전달하므로 CORS 설정도 필요 없다.
+
+```bash
+node scripts/set-api-origin.mjs https://<백엔드 공개 주소>
+npx vercel --prod
+```
+
+백엔드 주소를 바꿀 때마다 위 명령을 다시 실행하고 재배포한다. `VITE_API_BASE_URL`은 기본값(`/api/v1`)을 그대로 둔다.
+
+배포 뒤 확인할 것은 두 가지다. `Set-Cookie`에 `HttpOnly`와 `Secure`가 붙는지, 그리고 `npm run test:contract`가 배포된 백엔드 응답과 fixture의 일치를 보고하는지다.
+
+```bash
+CONTRACT_API_BASE=https://<프런트 도메인>/api/v1 npm run test:contract
+```
+
 환경변수는 `VITE_API_BASE_URL` 하나를 둔다. 같은 origin 배포에서는 빈 문자열 또는 `/api/v1` 상대 경로를 사용한다. 다른 origin을 쓸 경우에는 두 origin이 same-site여야 하고, backend의 credential CORS allowlist에도 정확한 frontend origin이 있어야 한다. `SameSite=Lax` cookie만으로는 서로 다른 site 간 XHR 세션을 유지할 수 없다. 모든 요청은 `credentials: 'include'`로 보내 HttpOnly 세션 cookie를 포함한다. 브라우저에서 Provider 비밀값을 읽거나 저장하지 않는다.
 
 ## 3. 정보 구조와 화면 흐름
