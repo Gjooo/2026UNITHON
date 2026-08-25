@@ -15,9 +15,11 @@ services:
       MVP_PROVIDER_MODE: "${MVP_PROVIDER_MODE:-fake}"
       MVP_DATABASE_PATH: /data/mvp.sqlite3
       MVP_MAX_RUNTIME_MINUTES: "${MVP_MAX_RUNTIME_MINUTES:-10}"
+      # 로컬 프런트엔드는 http 로 접속한다. Secure 쿠키는 http 로 전송되지 않는다.
+      MVP_COOKIE_SECURE: "${MVP_COOKIE_SECURE:-true}"
       # 터널이 붙여 주는 공개 HTTPS 주소. Runpod 컨테이너가 이 주소로 완료를 알린다.
       BACKEND_PUBLIC_BASE_URL: "${BACKEND_PUBLIC_BASE_URL:-}"
-      FRONTEND_ORIGINS: "${FRONTEND_ORIGINS:-}"
+      FRONTEND_ORIGINS: "${FRONTEND_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000}"
       RUNPOD_API_KEY: "${RUNPOD_API_KEY:-}"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8080/health',timeout=3)"]
