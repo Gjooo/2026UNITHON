@@ -11,5 +11,9 @@ Object.defineProperty(globalThis, 'jest', {
 })
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
-afterEach(() => server.resetHandlers())
+afterEach(() => {
+  server.resetHandlers()
+  // 앱이 새로고침 복구에 쓰는 값이라 테스트 사이에 새면 다음 테스트가 엉뚱한 화면에서 시작한다.
+  window.localStorage.clear()
+})
 afterAll(() => server.close())

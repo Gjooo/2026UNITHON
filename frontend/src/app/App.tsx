@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { ApiError } from '@/api/errors'
 import { useSession } from '@/hooks/useSession'
 import { useCreateJob } from '@/hooks/useCreateJob'
 import { useCancelJob, useJob, useStartJob } from '@/hooks/useJob'
@@ -6,6 +7,8 @@ import { ConstraintForm } from '@/features/training/ConstraintForm'
 import { ExecutionPlanReview } from '@/features/training/ExecutionPlanReview'
 import { ApprovalPanel } from '@/features/training/ApprovalPanel'
 import { JobTracker } from '@/features/training/JobTracker'
+import { JobResult } from '@/features/training/JobResult'
+import { clearActiveJobId, readActiveJobId } from '@/features/training/activeJob'
 import { toUserMessage } from '@/features/training/messages'
 import styles from './App.module.css'
 
@@ -32,17 +35,49 @@ function SessionStatus() {
 
 export function App() {
   const session = useSession()
-  const [jobId, setJobId] = useState<string | null>(null)
+  const [jobId, setJobId] = useState<string | null>(() => readActiveJobId())
+  const [recoveryNotice, setRecoveryNotice] = useState<string | null>(null)
 
-  const createJob = useCreateJob((created) => setJobId(created.id))
+  const createJob = useCreateJob((created) => {
+    setRecoveryNotice(null)
+    setJobId(created.id)
+  })
   const startJob = useStartJob()
   const cancelJob = useCancelJob()
 
   // 서버 Job이 화면의 source of truth다. mutation 응답으로 상태를 추정하지 않는다.
-  const job = useJob(jobId).data ?? null
+  const jobQuery = useJob(jobId)
+  const job = jobQuery.data ?? null
 
   const allowance = session.data?.executionAllowance
   const canStart = !allowance || allowance.used < allowance.limit
+
+  // 소유권이 없거나 세션이 끝난 Job은 저장값을 지우고 새 흐름으로 돌아간다.
+  const jobError = jobQuery.error
+  useEffect(() => {
+    if (!(jobError instanceof ApiError)) return
+    if (jobError.status !== 401 && jobError.status !== 404) return
+    clearActiveJobId()
+    setJobId(null)
+    setRecoveryNotice(toUserMessage(jobError))
+  }, [jobError])
+
+  function startAnother() {
+    clearActiveJobId()
+    setRecoveryNotice(null)
+    setJobId(null)
+  }
+
+  if (job && (job.status === 'COMPLETED' || job.status === 'FAILED' || job.status === 'CANCELLED')) {
+    return (
+      <Shell>
+        <h1 className={styles.pageTitle}>실행 결과</h1>
+        <div className={styles.content}>
+          <JobResult job={job} canStartAnother={canStart} onStartAnother={startAnother} />
+        </div>
+      </Shell>
+    )
+  }
 
   if (job && job.status !== 'DRAFT') {
     return (
@@ -53,6 +88,9 @@ export function App() {
             <p className={styles.formAlert} role="alert">
               {toUserMessage(cancelJob.error)}
             </p>
+          )}
+          {jobQuery.isError && (
+            <p className={styles.connectionNotice}>연결을 다시 확인하는 중</p>
           )}
           <JobTracker
             job={job}
@@ -100,6 +138,11 @@ export function App() {
         다루지 않습니다.
       </p>
       <div className={styles.content}>
+        {recoveryNotice && (
+          <p className={styles.formAlert} role="alert">
+            {recoveryNotice}
+          </p>
+        )}
         {createJob.isError && (
           <p className={styles.formAlert} role="alert">
             {toUserMessage(createJob.error)}

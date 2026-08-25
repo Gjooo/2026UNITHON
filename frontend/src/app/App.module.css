@@ -101,3 +101,12 @@
 .panelGap {
   margin-top: var(--space-xl);
 }
+
+.connectionNotice {
+  background: var(--canvas-soft);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  color: var(--status-warn);
+  margin-bottom: var(--space-lg);
+  padding: var(--space-md) var(--space-lg);
+}

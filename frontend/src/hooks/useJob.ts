@@ -1,7 +1,14 @@
+import { useCallback, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { cancelJob, getJob, startJob, type JobStatus, type TrainingJob } from '@/api/jobs'
 
 export const POLL_INTERVAL_MS = 2500
+export const MAX_POLL_INTERVAL_MS = 15_000
+
+/** 연속 실패는 지수 backoff으로 늦춘다. 최종 상태를 임의로 추정하지 않는다. */
+export function pollIntervalMs(consecutiveFailures: number): number {
+  return Math.min(MAX_POLL_INTERVAL_MS, POLL_INTERVAL_MS * 2 ** consecutiveFailures)
+}
 
 const IN_FLIGHT: ReadonlySet<JobStatus> = new Set<JobStatus>([
   'PROVISIONING',
@@ -19,13 +26,32 @@ export function jobKey(jobId: string) {
 }
 
 export function useJob(jobId: string | null) {
+  // 연속 실패 수를 직접 센다. 라이브러리의 fetchFailureCount는 retry 경로에서
+  // 한 번의 실패에도 두 번 증가해 간격 계산에 쓸 수 없다.
+  const [consecutiveFailures, setConsecutiveFailures] = useState(0)
+
+  const queryFn = useCallback(
+    async ({ signal }: { signal: AbortSignal }) => {
+      try {
+        const job = await getJob(jobId as string, signal)
+        setConsecutiveFailures(0)
+        return job
+      } catch (error) {
+        setConsecutiveFailures((count) => count + 1)
+        throw error
+      }
+    },
+    [jobId],
+  )
+
   return useQuery({
     queryKey: ['job', jobId],
-    queryFn: ({ signal }) => getJob(jobId as string, signal),
+    queryFn,
     enabled: jobId !== null,
     staleTime: Infinity,
+    retry: false,
     refetchInterval: (query) =>
-      isInFlight(query.state.data?.status) ? POLL_INTERVAL_MS : false,
+      isInFlight(query.state.data?.status) ? pollIntervalMs(consecutiveFailures) : false,
   })
 }
 
