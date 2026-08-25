@@ -13,7 +13,7 @@ def test_runpod_lifecycle_provider_builds_fixed_callback_payload_and_maps_status
         if method == "POST":
             return 201, {"id": "pod-123"}
         if method == "GET":
-            return 200, {"desiredStatus": "RUNNING"}
+            return 200, {"desiredStatus": "RUNNING", "runtime": {"uptimeInSeconds": 12}}
         assert method == "DELETE"
         return 204, {}
 
@@ -40,3 +40,30 @@ def test_runpod_lifecycle_provider_builds_fixed_callback_payload_and_maps_status
     assert calls[1][0:2] == ("GET", "https://rest.runpod.io/v1/pods/pod-123")
     assert calls[2][0:2] == ("DELETE", "https://rest.runpod.io/v1/pods/pod-123")
 
+
+
+def test_a_pod_still_pulling_its_image_is_not_reported_as_running():
+    """Runpod은 Pod를 만드는 순간 desiredStatus를 RUNNING으로 둔다.
+
+    컨테이너가 실제로 뜨기 전까지 runtime은 비어 있다. 이 구간을 실행 중으로
+    보고하면 화면은 이미지를 받는 몇 분 동안 학습이 도는 것처럼 보인다.
+    """
+
+    def transport(method, url, body, headers, timeout):
+        return 200, {"desiredStatus": "RUNNING", "runtime": None}
+
+    provider = RunpodRestLifecycleProvider(
+        api_key="test-key", callback_base_url="https://api.example.test", transport=transport
+    )
+
+    assert provider.get_pod_status("pod-123") is PodStatus.PROVISIONING
+
+
+def test_exited_and_terminated_pods_are_terminated():
+    for desired in ("EXITED", "TERMINATED"):
+        provider = RunpodRestLifecycleProvider(
+            api_key="test-key",
+            callback_base_url="https://api.example.test",
+            transport=lambda m, u, b, h, t, d=desired: (200, {"desiredStatus": d}),
+        )
+        assert provider.get_pod_status("pod-123") is PodStatus.TERMINATED

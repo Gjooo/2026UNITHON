@@ -119,8 +119,7 @@ class RunpodRestLifecycleProvider:
         if not 200 <= status < 300:
             logger.error("runpod status failed: pod=%s http_status=%s", pod_id, status)
             self._raise_for_status("status", status)
-        raw_status = self._raw_status(response)
-        return self._normalize_status(raw_status)
+        return self._pod_status(response)
 
     def delete_pod(self, pod_id: str) -> None:
         status, _ = self._transport(
@@ -154,17 +153,34 @@ class RunpodRestLifecycleProvider:
             "Content-Type": "application/json",
         }
 
-    @staticmethod
-    def _raw_status(response: dict[str, Any]) -> str:
-        runtime = response.get("runtime")
-        candidates = (
-            response.get("desiredStatus"),
-            response.get("status"),
-            runtime.get("status") if isinstance(runtime, dict) else None,
-        )
-        for value in candidates:
-            if isinstance(value, str) and value:
-                return value.upper()
+    @classmethod
+    def _pod_status(cls, response: dict[str, Any]) -> PodStatus:
+        """Report what the Pod is doing, not what we asked it to do.
+
+        Runpod sets ``desiredStatus`` to RUNNING the moment a Pod is created and
+        leaves it there while the image is still being pulled — measured at over
+        seven minutes for a multi-gigabyte image. Reading it as the live status
+        marks a job RUNNING long before the container starts, so the screen
+        claims training is under way while nothing is running yet.
+
+        ``runtime`` is populated only once the container is actually up, so it
+        is what separates provisioning from running.
+        """
+
+        desired = response.get("desiredStatus")
+        desired = desired.upper() if isinstance(desired, str) else ""
+        if desired == "RUNNING":
+            return (
+                PodStatus.RUNNING
+                if isinstance(response.get("runtime"), dict)
+                else PodStatus.PROVISIONING
+            )
+        if desired:
+            return cls._normalize_status(desired)
+
+        raw = response.get("status")
+        if isinstance(raw, str) and raw:
+            return cls._normalize_status(raw.upper())
         raise RunpodLifecycleError("Runpod status response did not include a recognizable status")
 
     @staticmethod
