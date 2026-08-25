@@ -1,0 +1,12 @@
+{
+  "fixture_type": "DEMO_FIXTURE_DO_NOT_USE_AS_LIVE",
+  "description": "Synthetic cross-provider offers for credential-free demonstrations.",
+  "offers": [
+    {"provider":"DEMO RunPod-style","name":"RTX 4090","vram_gb":24,"price_per_hour":0.70,"performance_score":1.0,"available":true},
+    {"provider":"DEMO Vast-style","name":"RTX 4090","vram_gb":24,"price_per_hour":0.58,"performance_score":1.0,"available":true},
+    {"provider":"DEMO RunPod-style","name":"A100 40GB","vram_gb":40,"price_per_hour":1.40,"performance_score":2.2,"available":true},
+    {"provider":"DEMO Vast-style","name":"A100 80GB","vram_gb":80,"price_per_hour":1.75,"performance_score":2.4,"available":true},
+    {"provider":"DEMO RunPod-style","name":"H100 80GB","vram_gb":80,"price_per_hour":2.80,"performance_score":4.0,"available":true},
+    {"provider":"DEMO Vast-style","name":"H100 80GB unavailable","vram_gb":80,"price_per_hour":2.20,"performance_score":4.0,"available":false}
+  ]
+}
