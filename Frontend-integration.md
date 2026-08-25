@@ -179,3 +179,48 @@ Pod 생성 요청보다 앞선다. 승인 트랜잭션이 커밋되는 순간에
 ### 전역 동시 실행 제한과 테스트 순서
 
 서비스 전체 동시 실행 1건 제한은 `PROVISIONING`, `RUNNING`, `TERMINATING` 세 상태를 모두 센다. 앞 시나리오가 `TERMINATING`에 남아 있으면 다음 시나리오의 start가 `DEMO_BUSY`로 막힌다. 실행하는 E2E는 직렬로 돌리고 반드시 최종 상태까지 끌고 간 뒤 끝내야 한다.
+
+
+---
+
+## 8. Vercel 배포: 쿠키를 잃지 않으려면 rewrite 를 쓴다
+
+프런트엔드를 Vercel, 백엔드를 Railway에 두면 브라우저 입장에서 **서로 다른 사이트**가 된다. 이 상태에서 세션 쿠키를 직접 주고받으면 두 가지가 동시에 걸린다.
+
+1. `SameSite=Lax` 쿠키는 cross-site fetch 에 실리지 않는다 → 모든 요청이 401
+2. `SameSite=None; Secure` 로 바꿔도 **third-party 쿠키**가 되어 Safari 는 기본 차단, Chrome 도 차단 방향이다 → 심사위원이 아이폰으로 열면 로그인 자체가 안 되는 것과 같은 상태가 된다
+
+데모 당일 아이폰 하나로 무너질 수 있는 지점이다.
+
+### 해결: Vercel rewrite 로 같은 origin 에서 부른다
+
+개발에서 쓰는 Vite proxy 와 같은 모양을 배포에도 적용한다. 브라우저는 Vercel 주소만 보게 되므로 same-origin 이 되고, 쿠키 문제와 CORS 가 **둘 다 사라진다.**
+
+```json
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://miraculous-bravery-production-2d72.up.railway.app/api/:path*"
+    }
+  ]
+}
+```
+
+`vercel.json` 에 넣으면 된다. 이렇게 하면
+
+- `VITE_API_BASE_URL` 은 기본값 `/api/v1` 그대로 둔다
+- 백엔드 쿠키는 `SameSite=Lax` 유지 (바꿀 필요 없다)
+- 백엔드 `FRONTEND_ORIGINS` 도 필요 없다. cross-origin 요청 자체가 생기지 않는다
+- Safari·iOS 에서도 동작한다
+
+### rewrite 를 쓰지 않는 경우
+
+굳이 브라우저가 Railway 를 직접 부르게 하려면 백엔드에 다음이 필요하다.
+
+```text
+MVP_COOKIE_SAMESITE=none
+FRONTEND_ORIGINS=https://<vercel 도메인>
+```
+
+`none` 은 `Secure` 없이는 브라우저가 버리므로 서버가 기동 단계에서 막는다. 그래도 Safari 의 third-party 쿠키 차단은 남는다. Vercel preview 배포는 매번 다른 주소가 생겨 `FRONTEND_ORIGINS` 에 걸리지 않는 문제도 따라온다. rewrite 를 권한다.
