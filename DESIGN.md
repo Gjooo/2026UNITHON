@@ -1,171 +1,462 @@
-# UNWORK 디자인 시스템
+---
+version: alpha
+name: Supabaze-design-analysis
+description: An inspired interpretation of Supabaze's design language — an open-source database platform built on a clean white-and-near-black system with a single signature emerald-green CTA, a custom humanist sans display tier, and dense product UI mockups composited above the hero. The brand reads as quietly technical: minimal chrome, a near-monochrome palette, and the green primary acting as the only chromatic event on the page.
 
-> 활성 디자인 가이드. UI를 구현하기 전 이 문서와 원본 레퍼런스 [DESIGN_Spotify.md](DESIGN_Spotify.md), [DESIGN_Supabase.md](DESIGN_Supabase.md)를 함께 읽는다.
+colors:
+  primary: "#3ecf8e"
+  primary-deep: "#24b47e"
+  primary-soft: "#4ade80"
+  ink: "#171717"
+  ink-secondary: "#212121"
+  ink-mute: "#707070"
+  ink-mute-2: "#9a9a9a"
+  ink-faint: "#b2b2b2"
+  on-primary: "#171717"
+  on-dark: "#ffffff"
+  canvas: "#ffffff"
+  canvas-soft: "#fafafa"
+  canvas-night: "#1c1c1c"
+  canvas-night-soft: "#202020"
+  hairline: "#dfdfdf"
+  hairline-strong: "#c7c7c7"
+  hairline-cool: "#ededed"
+  hairline-cool-2: "#efefef"
+  hairline-cool-3: "#d4d4d4"
+  accent-purple: "#6b01c2"
+  accent-violet: "#644fc1"
+  accent-purple-soft: "#eddbf9"
+  accent-yellow: "#ffdb13"
+  accent-tomato: "#ff2201"
+  accent-pink: "#c7007e"
+  accent-indigo: "#054cff"
+  accent-crimson: "#e2005a"
 
-## 1. 방향
+typography:
+  display-xxl:
+    fontFamily: "Circular, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+    fontSize: 64px
+    fontWeight: 500
+    lineHeight: 1.1
+    letterSpacing: -1.92px
+  display-xl:
+    fontFamily: "Circular, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+    fontSize: 48px
+    fontWeight: 500
+    lineHeight: 1.1
+    letterSpacing: -1.44px
+  display-lg:
+    fontFamily: "Circular, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+    fontSize: 36px
+    fontWeight: 500
+    lineHeight: 1.15
+    letterSpacing: -0.72px
+  display-md:
+    fontFamily: "Circular, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+    fontSize: 28px
+    fontWeight: 500
+    lineHeight: 1.2
+    letterSpacing: -0.42px
+  heading-lg:
+    fontFamily: "Circular, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+    fontSize: 22px
+    fontWeight: 500
+    lineHeight: 1.2
+    letterSpacing: 0
+  heading-md:
+    fontFamily: "Circular, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+    fontSize: 18px
+    fontWeight: 500
+    lineHeight: 1.4
+    letterSpacing: 0
+  body-lg:
+    fontFamily: "Circular, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+    fontSize: 18px
+    fontWeight: 400
+    lineHeight: 1.55
+    letterSpacing: 0
+  body-md:
+    fontFamily: "Circular, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+    fontSize: 16px
+    fontWeight: 400
+    lineHeight: 1.5
+    letterSpacing: 0
+  button-md:
+    fontFamily: "Circular, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+    fontSize: 14px
+    fontWeight: 500
+    lineHeight: 1.0
+    letterSpacing: 0
+  caption:
+    fontFamily: "Circular, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+    fontSize: 13px
+    fontWeight: 400
+    lineHeight: 1.45
+    letterSpacing: 0
+  micro:
+    fontFamily: "Circular, 'Helvetica Neue', Helvetica, Arial, sans-serif"
+    fontSize: 12px
+    fontWeight: 400
+    lineHeight: 1.45
+    letterSpacing: 0
+  code:
+    fontFamily: "ui-monospace, Menlo, Monaco, Consolas, 'Liberation Mono', monospace"
+    fontSize: 14px
+    fontWeight: 400
+    lineHeight: 1.5
+    letterSpacing: 0
 
-UNWORK는 AI 학습 실행 Agent를 위한 다크 운영 제품이다. 사용자는 GPU 콘솔을 다루는 대신 Agent의 추천 실행 계약을 검토하고, 실행 상태와 종료 확인을 신뢰해야 한다.
+rounded:
+  xs: 4px
+  sm: 6px
+  md: 8px
+  lg: 12px
+  xl: 16px
+  full: 9999px
 
-- **Spotify에서 가져올 것**: near-black 작업 공간, 명확한 상태 대비, 제한된 녹색 CTA, 몰입형 실행 추적 화면.
-- **Supabase에서 가져올 것**: 기술 제품의 정보 구조, 정돈된 form·table·code block, 절제된 테두리와 명료한 데이터 표시.
-- **UNWORK의 결정**: 기본 canvas는 어둡게 유지하고, 계약·후보 비교는 Supabase처럼 읽기 쉽게 구성한다. 장식적 이미지·그라디언트·다색 브랜드 요소는 사용하지 않는다.
+spacing:
+  xxs: 2px
+  xs: 4px
+  sm: 8px
+  md: 12px
+  lg: 16px
+  xl: 24px
+  xxl: 32px
+  huge: 64px
 
-## 2. 핵심 원칙
+components:
+  button-primary-green:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.on-primary}"
+    typography: "{typography.button-md}"
+    rounded: "{rounded.sm}"
+    padding: 8px 16px
+  button-primary-green-pressed:
+    backgroundColor: "{colors.primary-deep}"
+    textColor: "{colors.on-primary}"
+    typography: "{typography.button-md}"
+    rounded: "{rounded.sm}"
+    padding: 8px 16px
+  button-secondary-outline:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.ink}"
+    typography: "{typography.button-md}"
+    rounded: "{rounded.sm}"
+    padding: 8px 16px
+  button-on-dark:
+    backgroundColor: "{colors.canvas-night}"
+    textColor: "{colors.on-dark}"
+    typography: "{typography.button-md}"
+    rounded: "{rounded.sm}"
+    padding: 8px 16px
+  button-link:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.ink}"
+    typography: "{typography.button-md}"
+    rounded: "{rounded.xs}"
+    padding: 0px
+  text-input:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body-md}"
+    rounded: "{rounded.sm}"
+    padding: 8px 12px
+  card-feature-light:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body-md}"
+    rounded: "{rounded.lg}"
+    padding: 32px
+  card-pricing:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body-md}"
+    rounded: "{rounded.lg}"
+    padding: 32px
+  card-pricing-featured:
+    backgroundColor: "{colors.canvas-night}"
+    textColor: "{colors.on-dark}"
+    typography: "{typography.body-md}"
+    rounded: "{rounded.lg}"
+    padding: 32px
+  card-feature-dark:
+    backgroundColor: "{colors.canvas-night}"
+    textColor: "{colors.on-dark}"
+    typography: "{typography.body-md}"
+    rounded: "{rounded.lg}"
+    padding: 32px
+  code-block:
+    backgroundColor: "{colors.canvas-night}"
+    textColor: "{colors.on-dark}"
+    typography: "{typography.code}"
+    rounded: "{rounded.sm}"
+    padding: 16px
+  pill-tag-green:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.on-primary}"
+    typography: "{typography.micro}"
+    rounded: "{rounded.full}"
+    padding: 2px 8px
+  pill-tag-soft:
+    backgroundColor: "{colors.canvas-soft}"
+    textColor: "{colors.ink}"
+    typography: "{typography.micro}"
+    rounded: "{rounded.full}"
+    padding: 2px 8px
+  nav-bar-light:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body-md}"
+    rounded: "{rounded.xs}"
+    padding: 16px 24px
+  link-on-light:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body-md}"
+    rounded: "{rounded.xs}"
+    padding: 0px
+  footer-light:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.ink-mute}"
+    typography: "{typography.caption}"
+    rounded: "{rounded.xs}"
+    padding: 64px 24px
+---
 
-1. **계약이 주인공이다.** GPU·비용·시간·상태를 가장 읽기 쉽게 보여 주며, 장식이 정보를 앞서지 않는다.
-2. **녹색은 행동과 정상 상태에만 쓴다.** primary CTA, 추천됨, 정상 실행/완료 외에는 채우기 색으로 사용하지 않는다.
-3. **사용자는 선택하지 않고 승인한다.** GPU 수동 선택, Provider 설정, SSH/CUDA/Pod 제어 UI를 만들지 않는다.
-4. **종료 확인 전에는 완료가 아니다.** `TERMINATING`은 항상 별도 진행 상태로 보인다.
-5. **기술적이되 콘솔이 아니다.** 로그·exit code만 mono로 제공하고, raw Provider ID·API key·Pod ID는 노출하지 않는다.
+## Overview
 
-## 3. 디자인 토큰
+Supabaze's design language is engineered for clarity above all else. The marketing surfaces sit on `{colors.canvas}` (pure white), with text rendered in `{colors.ink}` (`#171717` — near-black, never pure black). Across the entire system the only consistent chromatic event is the **emerald green primary** (`{colors.primary}` — `#3ecf8e`) — used as the filled CTA, occasional accent dot, and the signature highlight color in the wordmark. Everything else is a calibrated grey ladder from `#ededed` hairline-cool to `#171717` ink, with thin black-on-white typography doing most of the visual work.
 
-```css
-:root {
-  --canvas: #121212;
-  --surface: #181818;
-  --surface-raised: #1f1f1f;
-  --surface-code: #1c1c1c;
-  --surface-hover: #272727;
+Typography runs **Circular** at weight 500 for display and 400 for body. The display tier uses tight negative letter-spacing (-1.92px at 64px) to pull the rounded humanist letterforms into editorial density. There's no atmospheric gradient, no full-bleed photography, no dark-canvas marketing track — the brand commits to white.
 
-  --text: #ffffff;
-  --text-secondary: #b3b3b3;
-  --text-tertiary: #9a9a9a;
-  --on-primary: #171717;
+The product itself appears as composited UI screenshots on every page: dashboard tables, SQL editors, query builders, log streams. These screenshots are the brand's argument. They sit inside `{rounded.lg}` 12px containers with subtle 1px hairlines, often arranged 2-up or in a floating "stacked panes" composition above the hero band.
 
-  --primary: #3ecf8e;
-  --primary-pressed: #24b47e;
-  --info: #539df5;
-  --warning: #ffa42b;
-  --danger: #f3727f;
+**Key Characteristics:**
+- Single emerald primary (`{colors.primary}` `#3ecf8e`) as the only chromatic event; everything else is monochrome.
+- White canvas marketing track with greyscale hierarchy from `{colors.hairline-cool}` to `{colors.ink}`.
+- Custom humanist sans display tier at weight 500 with negative letter-spacing of -1.92px to -0.42px.
+- Composited product UI screenshots (dashboard, SQL editor, log stream) are the dominant decorative element — never photography, never illustrations.
+- Tight 6px / 8px button radii — square-ish, technical, never pill-shaped.
+- Code blocks rendered in deep `{colors.canvas-night}` (`#1c1c1c`) with monospace inline code; the brand's developer DNA is visible in every snippet.
+- Pricing tiers use a dark inverted `{colors.canvas-night}` featured tier, not a green one — the green is reserved for buttons and dot accents.
 
-  --border: #4d4d4d;
-  --border-strong: #7c7c7c;
-  --shadow-raised: 0 8px 8px rgba(0, 0, 0, .3);
-  --shadow-dialog: 0 8px 24px rgba(0, 0, 0, .5);
+## Colors
 
-  --radius-control: 6px;
-  --radius-card: 12px;
-  --radius-dialog: 16px;
-  --radius-pill: 9999px;
+> **Source pages:** home (`/`), `/database`, `/partners/integrations`, `/partners/integrations/powersync`, `/solutions/ai-builders`, `/pricing`.
 
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 24px;
-  --space-6: 32px;
-  --space-7: 64px;
+### Brand & Accent
+- **Emerald** (`{colors.primary}` — `#3ecf8e`): The signature CTA color. Filled-button background, brand wordmark accent, dot indicator.
+- **Emerald Deep** (`{colors.primary-deep}` — `#24b47e`): Pressed-state lift of the primary.
+- **Emerald Soft** (`{colors.primary-soft}` — `#4ade80`): Lighter emerald used in chart accents and product UI.
+- **Accent Purple** (`{colors.accent-purple}` — `#6b01c2`): Rare accent used in integration logos and chart points; never a button.
+- **Accent Violet** (`{colors.accent-violet}` — `#644fc1`): Secondary accent in the same role as accent purple.
+- **Accent Yellow** (`{colors.accent-yellow}` — `#ffdb13`): Chart accent / status indicator only.
+- **Accent Pink / Crimson / Indigo / Tomato**: Reserved for integration logos and rare chart highlights, never as system colors.
 
-  --font-sans: Inter, Pretendard, "Noto Sans KR", system-ui, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-}
-```
+### Surface
+- **Canvas** (`{colors.canvas}` — `#ffffff`): Default page background.
+- **Canvas Soft** (`{colors.canvas-soft}` — `#fafafa`): Barely-tinted off-white for alternating section bands.
+- **Canvas Night** (`{colors.canvas-night}` — `#1c1c1c`): Deep near-black used in code blocks, dashboard mockups, featured pricing tier.
+- **Canvas Night Soft** (`{colors.canvas-night-soft}` — `#202020`): Slightly lifted dark for nested chrome.
+- **Hairline** (`{colors.hairline}` — `#dfdfdf`): 1px borders on cards and tables.
+- **Hairline Strong** (`{colors.hairline-strong}` — `#c7c7c7`): Slightly darker border for emphasis.
+- **Hairline Cool** (`{colors.hairline-cool}` — `#ededed`) / **Hairline Cool 2** (`#efefef`) / **Hairline Cool 3** (`#d4d4d4`): The brand's grey ladder for fine chrome work.
 
-`#3ecf8e` 하나만 primary green으로 사용한다. Supabase의 on-primary 원칙에 따라 녹색 버튼 위 텍스트는 흰색이 아니라 `#171717`이다.
+### Text
+- **Ink** (`{colors.ink}` — `#171717`): Default body text. Near-black, never pure.
+- **Ink Secondary** (`{colors.ink-secondary}` — `#212121`): Slightly cooler near-black for body emphasis.
+- **Ink Mute** (`{colors.ink-mute}` — `#707070`): Secondary text and helper copy.
+- **Ink Mute 2** (`{colors.ink-mute-2}` — `#9a9a9a`): Tertiary text.
+- **Ink Faint** (`{colors.ink-faint}` — `#b2b2b2`): Disabled / placeholder text.
+- **On Primary** (`{colors.on-primary}` — `#171717`): Text on the emerald primary fill — near-black, not white. The button reads as a "lit" surface with dark type, not a colored chip.
+- **On Dark** (`{colors.on-dark}` — `#ffffff`): Text on canvas-night surfaces.
 
-## 4. 타이포그래피
+## Typography
 
-| 용도 | 크기 / 굵기 / 행간 | 규칙 |
-| --- | --- | --- |
-| Page display | 36px / 500 / 1.15 | `letter-spacing: -0.72px`; 768px 미만은 28px |
-| Section title | 24px / 700 / 1.2 | 계약·결과의 주요 제목 |
-| Card heading | 18px / 600 / 1.3 | 추천 카드·상태 섹션 |
-| Body | 16px / 400 / 1.5 | 기본 설명과 폼 label |
-| Caption | 13px / 400 / 1.45 | 추정값 안내·부가 정보 |
-| Button | 14px / 600 / 1 | 일반 버튼은 sentence case, 승인 CTA는 필요 시 uppercase + 1.4px tracking |
-| Code | 14px / 400 / 1.5 | completion log·exit code에만 mono |
+### Font Family
 
-숫자·금액·시간은 tabular numeral을 우선 사용해 비교 표의 열이 흔들리지 않게 한다. 작은 muted text를 핵심 비용·상태 정보에 사용하지 않는다.
+The display and UI tier is **Circular** — a proprietary geometric humanist sans by Lineto. Fallback chain: `'Helvetica Neue', Helvetica, Arial`.
 
-## 5. 컴포넌트 규칙
+For maximum brand fidelity when Circular isn't licensed, use **Inter** (open-source via Google Fonts) at weight 500 for display with `letter-spacing: -1.92px` at 64px. Inter is the closest open-source analogue to Circular's geometric humanist character.
+
+Code blocks use **system mono** (`ui-monospace`, with Menlo / Monaco / Consolas fallbacks).
+
+### Hierarchy
+
+| Token | Size | Weight | Line Height | Letter Spacing | Use |
+|---|---|---|---|---|---|
+| `{typography.display-xxl}` | 64px | 500 | 1.1 | -1.92px | Hero headline |
+| `{typography.display-xl}` | 48px | 500 | 1.1 | -1.44px | Section opener |
+| `{typography.display-lg}` | 36px | 500 | 1.15 | -0.72px | Sub-section / pricing tier |
+| `{typography.display-md}` | 28px | 500 | 1.2 | -0.42px | Card title |
+| `{typography.heading-lg}` | 22px | 500 | 1.2 | 0 | Compact heading |
+| `{typography.heading-md}` | 18px | 500 | 1.4 | 0 | Section sub-heading |
+| `{typography.body-lg}` | 18px | 400 | 1.55 | 0 | Marketing body lead |
+| `{typography.body-md}` | 16px | 400 | 1.5 | 0 | Default UI body |
+| `{typography.button-md}` | 14px | 500 | 1.0 | 0 | Button label |
+| `{typography.caption}` | 13px | 400 | 1.45 | 0 | Helper, footnote |
+| `{typography.micro}` | 12px | 400 | 1.45 | 0 | Pill label, fine print |
+| `{typography.code}` | 14px | 400 | 1.5 | 0 | Code block content |
+
+### Principles
+- **Weight 500 across display.** Mid-weight reads as engineered, not decorative.
+- **Negative tracking on display.** -1.92px at 64px scaling proportionally down — tightens the rounded humanist letterforms into editorial density.
+- **Mono for code.** System mono families (Menlo / Monaco) — no proprietary mono webfont.
+
+### Note on Font Substitutes
+Circular is proprietary. Use **Inter** at weight 500 with `letter-spacing: -1.92px` for display tiers. **Geist Sans** (open-source from Vercel) is another close alternative for both display and body. Avoid Helvetica defaults — they're heavier and lack the geometric warmth.
+
+## Layout
+
+### Spacing System
+- **Base unit**: 8px (with 2 / 4 / 12 sub-tokens for fine work).
+- **Tokens**: `{spacing.xxs}` 2px · `{spacing.xs}` 4px · `{spacing.sm}` 8px · `{spacing.md}` 12px · `{spacing.lg}` 16px · `{spacing.xl}` 24px · `{spacing.xxl}` 32px · `{spacing.huge}` 64px.
+- **Section padding**: 64–96px on marketing surfaces.
+- **Card internal padding**: 32px on feature/pricing cards.
+
+### Grid & Container
+- Marketing pages center in a ~1280px container with no edge-bleed; the brand keeps content inside the box.
+- Pricing collapses 4-up → 2-up → 1-up at 1024 / 768 breakpoints.
+- Product UI mockups stack 2-up or render as overlapping panes inside the same container.
+
+### Whitespace Philosophy
+The brand uses generous 64–96px section padding without atmospheric gradients filling the space — the white canvas is the design. The composited product UI mockups break up sections without requiring decoration.
+
+## Elevation & Depth
+
+| Level | Treatment | Use |
+|---|---|---|
+| 0 | Flat, 1px hairline | Default cards |
+| 1 | `box-shadow: 0 1px 3px rgba(0,0,0,0.06)` | Subtle card lift |
+| 2 | `box-shadow: 0 8px 24px rgba(0,0,0,0.08)` | Floating composited UI mockups |
+| 3 | `box-shadow: 0 16px 48px rgba(0,0,0,0.12)` | Modal overlays, deep elevation |
+
+### Decorative Depth
+The brand's depth is **product UI mockups** rather than gradients. Stacked dashboard / SQL editor / log panes composite together with subtle Level 2 shadows to suggest spatial hierarchy.
+
+## Shapes
+
+### Border Radius Scale
+
+| Token | Value | Use |
+|---|---|---|
+| `{rounded.xs}` | 4px | Form inputs, hairline tags |
+| `{rounded.sm}` | 6px | Buttons (the brand's signature button radius), code blocks |
+| `{rounded.md}` | 8px | Compact cards, alerts |
+| `{rounded.lg}` | 12px | Pricing cards, feature cards, product mockups |
+| `{rounded.xl}` | 16px | Modal dialogs, large container chrome |
+| `{rounded.full}` | 9999px | Pill tags, avatars |
+
+### Photography Geometry
+The brand uses minimal photography. Customer logo strips display wordmarks at uniform height (~24–32px) in greyscale; case-study cards (rare) use 4:3 photos inset in `{rounded.lg}` containers.
+
+## Components
 
 ### Buttons
 
-- **Primary approval**: `--primary`, `--on-primary`, full pill, 최소 44px 높이. 한 viewport에서 하나만 둔다.
-- **Secondary**: `--surface-raised`, white text, 6px radius. 제약 수정, 다시 비교에 사용한다.
-- **Destructive**: 투명 또는 dark surface + `--danger` outline. 중단은 항상 확인 dialog를 거친다.
-- **Disabled**: opacity만으로 의미를 전달하지 않고, 이유 텍스트 또는 helper를 함께 제공한다.
+**`button-primary-green`** — the signature CTA.
+- Background `{colors.primary}`, text `{colors.on-primary}` (near-black, NOT white), type `{typography.button-md}`, padding `{spacing.sm} {spacing.lg}` (8px 16px), rounded `{rounded.sm}` 6px.
+- Pressed state `button-primary-green-pressed` shifts to `{colors.primary-deep}`.
 
-### Inputs and priority cards
+**`button-secondary-outline`** — outline alternative on white.
+- Background `{colors.canvas}`, text `{colors.ink}`, 1px solid `{colors.hairline-strong}` border, same shape.
 
-- 숫자 입력은 6px radius, 1px `--border`, 44px 이상 높이, focus-visible outline을 가진다.
-- 우선순위는 radio semantics를 가진 세 장의 compact card로 만든다. 선택됨은 primary border와 check icon, 텍스트로 모두 표시한다.
-- GPU selector, provider selector, hidden advanced form은 제공하지 않는다.
+**`button-on-dark`** — used on dark surfaces / code-block CTAs.
+- Background `{colors.canvas-night}`, text `{colors.on-dark}`, same shape.
 
-### Cards, tables, and code
+**`button-link`** — text-only inline button.
+- Transparent background, text `{colors.ink}` rendered in `{typography.button-md}`, no padding, with a subtle underline on hover.
 
-- 추천 실행안은 `--surface-raised` 카드와 subtle shadow를 사용한다. 추천 badge에만 green을 쓴다.
-- 후보 비교는 desktop table, mobile stacked card다. 항목 순서는 GPU → 예상 시간 → 예상 GPU 비용 → 예산 적합 여부 → 추천 여부로 고정한다.
-- `OVER_BUDGET`은 warning icon·텍스트와 함께 보여 주며, 흐리게 숨기지 않는다.
-- log·명령·exit code는 `--surface-code` mono block에 넣되, code block을 장식으로 쓰지 않는다.
+### Cards & Containers
 
-### Dialogs and notices
+**`card-feature-light`** — feature card on white.
+- Background `{colors.canvas}`, padding `{spacing.xxl}`, rounded `{rounded.lg}` 12px, 1px `{colors.hairline}` border.
 
-- 승인·중단 확인은 `--surface`와 `--shadow-dialog`을 사용하는 16px dialog다.
-- dialog에는 선택 GPU, 예상 시간·비용, 비용·중단의 결과를 평문으로 다시 보여 준다.
-- info/warning/error notice는 blue/orange/red과 아이콘·제목·다음 행동을 함께 제공한다.
+**`card-pricing`** — standard pricing tier.
+- Background `{colors.canvas}`, padding `{spacing.xxl}`, rounded `{rounded.lg}`, 1px `{colors.hairline}` border. Title in `{typography.heading-lg}`, price in `{typography.display-md}`, body in `{typography.body-md}`, CTA `button-primary-green` pinned bottom.
 
-## 6. 화면 구성
+**`card-pricing-featured`** — inverted dark featured tier.
+- Background `{colors.canvas-night}`, text `{colors.on-dark}`, otherwise identical structure.
 
-### 제약 입력
+**`card-feature-dark`** — feature card with deep dark fill.
+- Background `{colors.canvas-night}`, text `{colors.on-dark}`, padding `{spacing.xxl}`, rounded `{rounded.lg}`. Used for code-heavy feature explanations.
 
-- 화면 상단에는 `UNWORK`, `MVP · SD 1.5 LoRA` 배지, 익명 세션 상태만 둔다.
-- 사용자는 최대 예산과 `저비용`·`균형`·`빠른 완료`만 입력한다.
-- 고정 시나리오(Stable Diffusion 1.5 LoRA, 24GB VRAM, 최대 10분)는 읽기 전용으로 설명한다.
+**`code-block`** — code snippet container.
+- Background `{colors.canvas-night}`, text `{colors.on-dark}` rendered in `{typography.code}`. Padding `{spacing.lg}` 16px, rounded `{rounded.sm}` 6px.
 
-### 실행 계약 검토
+### Inputs & Forms
 
-- desktop: 12-column grid, 좌측 4 columns 제약 요약, 우측 8 columns 추천·비교.
-- 가장 위에는 선택 GPU, Provider, 예상 시간, 예상 GPU 비용, 추천 근거를 둔다.
-- `DEMO_SNAPSHOT`과 실제 비용을 보장하지 않는다는 문구는 계약 안에서 항상 보인다.
-- GPU를 변경할 수 있는 버튼은 만들지 않는다. CTA는 `실행 승인`, secondary는 `제약 수정`이다.
+**`text-input`** — standard form input.
+- Background `{colors.canvas}`, text `{colors.ink}`, type `{typography.body-md}`, padding `{spacing.sm} {spacing.md}` (8px 12px), rounded `{rounded.sm}` 6px, 1px `{colors.hairline}` border.
 
-### 실행 추적과 결과
+### Navigation
 
-- `PROVISIONING → RUNNING → TERMINATING → final` 단계 진행 UI를 사용한다.
-- `TERMINATING`에서는 “Pod 자동 종료를 확인하고 있어요”를 표시하며 최종 결과 색·문구를 앞당기지 않는다.
-- 완료 결과에는 completion log, exit code, 실행 시간, 선택 GPU, Pod 종료 확인을 제공한다.
-- 실패/중단 결과에는 안전한 원인과 종료 결과를 제공한다. 비용 또는 재시도 가능성을 추정해 말하지 않는다.
+**`nav-bar-light`** — top nav across the site.
+- Background `{colors.canvas}`, text `{colors.ink}`, padding `{spacing.lg} {spacing.xl}`. Logo on the left, primary nav center, "Sign In" link + filled `button-primary-green` on the right.
 
-## 7. 상태 색상
+### Pills, Tags, and Chips
 
-| 의미 | 색상 | 보조 표현 |
-| --- | --- | --- |
-| 추천 / 실행 중 / 완료 | `--primary` | check 또는 active 상태 icon과 텍스트 |
-| 세션 / 데모 스냅샷 안내 | `--info` | info icon과 설명 |
-| 예산 초과 / 종료 확인 대기 | `--warning` | warning icon과 다음 상태 설명 |
-| 실패 / 중단 확인 | `--danger` | error icon과 action |
+**`pill-tag-green`** — small green pill used for "new" or featured indicators.
+- Background `{colors.primary}`, text `{colors.on-primary}`, type `{typography.micro}`, padding `{spacing.xxs} {spacing.sm}`, rounded `{rounded.full}`.
 
-색상만으로 적합성·실행 결과를 구분하지 않는다. 모든 상태 badge는 icon 또는 label을 함께 가져야 한다.
+**`pill-tag-soft`** — neutral pill on light surfaces.
+- Background `{colors.canvas-soft}`, text `{colors.ink}`, otherwise same shape.
 
-## 8. 반응형과 접근성
+### Signature Components
 
-| Viewport | 구성 |
-| --- | --- |
-| ≥ 1024px | 최대 1180px container, 계약 검토 4:8 column |
-| 768–1023px | 모든 주요 섹션 단일 열, 표는 우선순위 유지 |
-| < 768px | 후보 card stack, 승인·중단 CTA sticky bottom bar |
+**Composited Product UI Mockups** — multi-layer dashboard / SQL editor / log pane composites with subtle Level 2 shadows. The product is the brand's argument; mockups always sit on white canvas with no surrounding decoration.
 
-- 모든 interactive control은 44×44px 이상의 hit target을 가진다.
-- radio card, dialog, error message는 키보드로 완전히 사용 가능해야 한다.
-- dialog는 focus trap·Escape·trigger focus 복귀를 제공한다.
-- polling state update는 `aria-live="polite"`로 요약만 알리고 focus를 빼앗지 않는다.
-- WCAG AA 대비를 유지하며, hover-only 정보나 가로 스크롤 표에 의존하지 않는다.
+**`link-on-light`** — inline links in body copy.
+- Text `{colors.ink}` rendered in `{typography.body-md}` with a persistent underline.
 
-## 9. Do / Don't
+**`footer-light`** — site-wide footer.
+- Background `{colors.canvas}`, text `{colors.ink-mute}`, type `{typography.caption}`, padding `{spacing.huge} {spacing.xl}` (64px 24px). Holds 4–5 columns of link groups, social icons, and a small legal row.
+
+## Do's and Don'ts
 
 ### Do
-
-- dark canvas와 layer 차이로 깊이를 만든다.
-- 정보가 많은 계약·비교 화면은 Supabase처럼 테이블과 hairline을 절제해 정리한다.
-- 단일 emerald를 의도적으로, 기능적인 위치에만 사용한다.
-- 로그·상태·비용의 정확한 문구를 우선하고 화려한 시각 효과를 피한다.
+- Reserve `{colors.primary}` emerald for filled CTAs and the wordmark accent — it should appear sparingly.
+- Render display tiers at weight 500 with negative letter-spacing — the engineered tightness is part of the brand.
+- Use `{rounded.sm}` 6px for buttons — square-ish radii, never pill-shaped.
+- Composite product UI mockups inside `{rounded.lg}` containers with subtle Level 2 shadows.
+- Use near-black `{colors.ink}` on the emerald button (not white) — the green reads as "lit" with dark type, which is the brand's idiosyncratic choice.
+- Apply system mono for every code block.
 
 ### Don't
+- Don't introduce additional accent colors as system colors — purples, yellows, and pinks belong inside chart points and integration logos only.
+- Don't bump display weight above 500 — the brand's calibrated mid-weight breaks at 600+.
+- Don't use pill-shaped buttons; the brand's button radius is square-ish 6px.
+- Don't use white text on the emerald button — the brand specifically uses near-black on green.
+- Don't add atmospheric gradients to hero bands — the white canvas is the design.
 
-- white/light canvas, atmospheric gradient, album art, 장식용 일러스트를 추가하지 않는다.
-- 여러 accent color, green background section, white text on primary green을 사용하지 않는다.
-- 모든 버튼을 pill로 만들지 않는다. pill은 승인 CTA·status badge에 한정한다.
-- Spotify/Supabase 로고·상표·proprietary font를 제품 자산으로 사용하지 않는다.
-- 완료 확인 전 `COMPLETED`, `FAILED`, `CANCELLED` 화면을 표시하지 않는다.
+## Responsive Behavior
+
+### Breakpoints
+
+| Name | Width | Key Changes |
+|---|---|---|
+| Wide | ≥ 1440px | Full container width; product mockups at full scale |
+| Desktop | 1024–1440px | Default content max-width; pricing 4-up |
+| Tablet | 768–1023px | Pricing 2-up; mockups simplify to single panel |
+| Mobile | < 768px | Pricing 1-up; hamburger nav; display drops 64 → 36px |
+
+### Touch Targets
+- Buttons hit ≥ 36×36px on mobile; vertical padding scales up to maintain WCAG AA minimum.
+- Form fields stay at 36px minimum height.
+
+### Collapsing Strategy
+- Display tiers stair-step 64 → 48 → 36 → 28 → 22px.
+- Product UI mockups simplify to a single primary panel on mobile.
+- Pricing tiers stair-step 4-up → 2-up → 1-up; dark featured tier always distinguished.
+
+### Image Behavior
+Product UI mockups use `srcset` with desktop / mobile crops; mobile crops focus on the most actionable inner panel.
+
+## Iteration Guide
+
+1. Focus on ONE component at a time.
+2. Reference component names and tokens directly.
+3. Run `npx @google/design.md lint DESIGN.md` after edits.
+4. Default body to `{typography.body-md}`; use `{typography.code}` for any developer-facing snippet.
+5. Keep emerald scarce; one filled green button per viewport.
+6. The white-canvas commitment is non-negotiable — adding atmospheric backdrops breaks the brand.
