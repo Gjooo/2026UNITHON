@@ -93,13 +93,14 @@ def create_session(
     service: JobApplicationService = Depends(get_mvp_service),
 ) -> dict:
     session, raw_token = service.create_or_refresh_session(request.cookies.get(SESSION_COOKIE_NAME))
+    settings = get_settings()
     response.set_cookie(
         key=SESSION_COOKIE_NAME,
         value=raw_token,
         max_age=SESSION_TTL_DAYS * 24 * 60 * 60,
         httponly=True,
-        secure=get_settings().cookie_secure,
-        samesite="lax",
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
         path="/",
     )
     return {

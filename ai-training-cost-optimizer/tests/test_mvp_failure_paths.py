@@ -154,3 +154,31 @@ def test_cancel_is_rejected_after_the_job_reached_a_final_status(tmp_path):
         assert cancelled.json()["error"]["code"] == "INVALID_JOB_STATE"
     finally:
         app.dependency_overrides.clear()
+
+
+def test_timeout_while_still_provisioning_says_training_never_started(tmp_path):
+    """준비 중 시간 초과는 학습 중 초과와 사용자에게 뜻이 다르다."""
+
+    from datetime import timedelta
+    from training_cost_optimizer.mvp.domain import utc_now
+
+    harness = _Harness(tmp_path)
+    now = [utc_now()]
+    harness.worker.clock = lambda: now[0]
+    try:
+        job_id = harness.start_job()
+        harness.worker.run_once(job_id)  # Pod는 만들어졌지만 계속 준비 중이다
+        assert harness.status(job_id) == "PROVISIONING"
+
+        now[0] += timedelta(minutes=11)
+        assert harness.worker.run_once(job_id).value == "TERMINATING"
+        harness.worker.run_once(job_id)
+        harness.provider.mark_terminated(harness.repository.get_job(job_id).runpod_pod_id)
+        harness.worker.run_once(job_id)
+
+        job = harness.client.get(f"/api/v1/jobs/{job_id}").json()
+        assert job["status"] == "FAILED"
+        assert "학습은 시작되지 않았습니다" in job["failureMessage"]
+        assert "10분" in job["failureMessage"]
+    finally:
+        app.dependency_overrides.clear()

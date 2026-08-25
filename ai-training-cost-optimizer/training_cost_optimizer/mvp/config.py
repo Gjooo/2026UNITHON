@@ -128,6 +128,7 @@ class MvpSettings:
     provider_mode: str
     max_runtime_minutes: int
     cookie_secure: bool
+    cookie_samesite: str
 
 
 def get_settings() -> MvpSettings:
@@ -138,7 +139,28 @@ def get_settings() -> MvpSettings:
         provider_mode=_provider_mode(),
         max_runtime_minutes=_max_runtime_minutes(),
         cookie_secure=_cookie_secure(),
+        cookie_samesite=_cookie_samesite(),
     )
+
+
+def _cookie_samesite() -> str:
+    """같은 사이트에 배포하면 ``lax``, 다른 사이트면 ``none`` 이어야 한다.
+
+    ``Lax`` 쿠키는 cross-site fetch 에 실려 나가지 않는다. 프런트엔드를 백엔드와
+    다른 도메인에 배포하면 세션 쿠키가 아예 전송되지 않아 모든 요청이 401이 된다.
+    그 경우 ``none`` 이 필요하고, 브라우저는 ``None`` 쿠키에 ``Secure`` 를 함께
+    요구한다.
+    """
+
+    value = os.getenv("MVP_COOKIE_SAMESITE", "lax").strip().lower() or "lax"
+    if value not in {"lax", "none", "strict"}:
+        raise MvpConfigError("MVP_COOKIE_SAMESITE must be lax, none, or strict")
+    if value == "none" and not _cookie_secure():
+        raise MvpConfigError(
+            "MVP_COOKIE_SAMESITE=none requires MVP_COOKIE_SECURE=true; "
+            "browsers reject a SameSite=None cookie without Secure"
+        )
+    return value
 
 
 def _cookie_secure() -> bool:

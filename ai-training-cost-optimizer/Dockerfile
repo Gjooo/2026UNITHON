@@ -7,7 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-COPY pyproject.toml ./
+COPY pyproject.toml docker-entrypoint.py ./
 COPY training_cost_optimizer ./training_cost_optimizer
 RUN pip install --no-cache-dir .
 
@@ -19,11 +19,14 @@ ENV MVP_DATABASE_PATH=/data/mvp.sqlite3 \
     PORT=8080
 
 RUN useradd --system --uid 10001 unwork && mkdir -p /data && chown unwork /data
-USER unwork
+
+# root 로 시작해 볼륨 소유권만 정리하고 곧바로 unwork 로 내려간다.
+# 배포 플랫폼이 붙이는 지속 볼륨은 root 소유라, 비-root 로 시작하면 SQLite 를
+# 만들지 못한다. 서버 프로세스 자체는 root 로 돌지 않는다.
 
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import os,urllib.request;urllib.request.urlopen(f'http://127.0.0.1:{os.environ[\"PORT\"]}/health',timeout=3)"
 
-CMD ["sh", "-c", "exec uvicorn training_cost_optimizer.api:app --host 0.0.0.0 --port ${PORT} --workers 1"]
+CMD ["python", "docker-entrypoint.py"]

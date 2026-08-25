@@ -488,3 +488,33 @@ def test_training_image_and_command_can_be_overridden(monkeypatch):
     # 비교·추천에 쓰이는 값은 그대로여야 한다.
     assert overridden.estimated_gpu_cost_krw == base.estimated_gpu_cost_krw
     assert overridden.runpod_gpu_type_id == base.runpod_gpu_type_id
+
+
+def test_cookie_samesite_supports_a_cross_site_frontend(monkeypatch, tmp_path):
+    """다른 도메인에 배포된 프런트엔드는 SameSite=None 이어야 쿠키를 받는다."""
+
+    service = JobApplicationService(
+        SQLiteMvpRepository(tmp_path / "mvp.sqlite3"), runner=FakeJobRunner()
+    )
+    app.dependency_overrides[get_mvp_service] = lambda: service
+    try:
+        client = TestClient(app, base_url="https://testserver")
+
+        monkeypatch.delenv("MVP_COOKIE_SAMESITE", raising=False)
+        assert "SameSite=lax" in client.post("/api/v1/session").headers["set-cookie"]
+
+        monkeypatch.setenv("MVP_COOKIE_SAMESITE", "none")
+        cross_site = client.post("/api/v1/session").headers["set-cookie"]
+        assert "SameSite=none" in cross_site
+        assert "Secure" in cross_site
+
+        # None 쿠키는 Secure 없이는 브라우저가 버린다. 조용히 깨지느니 기동에서 막는다.
+        monkeypatch.setenv("MVP_COOKIE_SECURE", "false")
+        with pytest.raises(MvpConfigError):
+            get_settings()
+
+        monkeypatch.setenv("MVP_COOKIE_SAMESITE", "diagonal")
+        with pytest.raises(MvpConfigError):
+            get_settings()
+    finally:
+        app.dependency_overrides.clear()

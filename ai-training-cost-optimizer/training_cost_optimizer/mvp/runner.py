@@ -61,7 +61,15 @@ class JobLifecycleWorker:
             and job.started_at is not None
             and now >= job.started_at + timedelta(minutes=job.max_runtime_minutes)
         ):
-            message = f"최대 실행 시간 {job.max_runtime_minutes}분을 초과했습니다."
+            # 준비 중에 시간을 넘긴 경우와 학습 중에 넘긴 경우는 사용자에게
+            # 뜻이 다르다. 전자는 학습이 시작조차 못 했다는 뜻이다.
+            if job.status is MvpJobStatus.PROVISIONING:
+                message = (
+                    f"실행 환경을 준비하는 동안 최대 실행 시간 {job.max_runtime_minutes}분을 "
+                    "넘겨 중단했습니다. 학습은 시작되지 않았습니다."
+                )
+            else:
+                message = f"최대 실행 시간 {job.max_runtime_minutes}분을 초과했습니다."
             logger.warning(
                 "job=%s timed out after %s minutes (pod=%s)",
                 job.id,
