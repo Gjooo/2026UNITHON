@@ -1,6 +1,6 @@
 # UNWORK 학습 실행 Agent — 최소 MVP API 명세
 
-`PRD-final.md`와 `ERD.md`를 기준으로 한 단일 Golden Path 데모용 REST API다. API의 중심 리소스는 `TrainingJob`이며, GPU Pod·비용·artifact는 사용자 API로 노출하지 않는다.
+`MVP-implementation-plan.md`와 `ERD.md`를 기준으로 한 단일 Golden Path 데모용 REST API다. API의 중심 리소스는 `TrainingJob`이며, GPU Pod·비용·artifact는 사용자 API로 노출하지 않는다.
 
 ## 1. 공통 규약
 

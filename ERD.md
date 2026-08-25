@@ -1,6 +1,6 @@
 # UNWORK 학습 실행 Agent — 최소 MVP ERD
 
-`PRD-final.md`의 단일 Golden Path 데모를 위한 PostgreSQL 논리 ERD다. 사용자가 보는 중심 객체는 `TRAINING_JOBS`이고, MVP는 artifact·실행 계획·비용·사용자 API 키 이력을 저장하지 않는다.
+`MVP-implementation-plan.md`의 단일 Golden Path 데모를 위한 PostgreSQL 논리 ERD다. 사용자가 보는 중심 객체는 `TRAINING_JOBS`이고, MVP는 artifact·실행 계획·비용·사용자 API 키 이력을 저장하지 않는다.
 
 ```mermaid
 erDiagram
