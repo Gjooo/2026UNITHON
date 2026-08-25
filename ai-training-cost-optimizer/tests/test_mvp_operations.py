@@ -467,3 +467,24 @@ def test_user_facing_messages_avoid_demo_and_infrastructure_words(tmp_path):
                 assert word not in message, f"{word!r} in {message!r}"
     finally:
         app.dependency_overrides.clear()
+
+
+def test_training_image_and_command_can_be_overridden(monkeypatch):
+    """레지스트리 태그가 정해지기 전에도 배포 환경에서 이미지를 바꿀 수 있어야 한다."""
+
+    from training_cost_optimizer.mvp.config import profile_for_id
+
+    base = GPU_EXECUTION_PROFILES[0]
+    monkeypatch.delenv("MVP_TRAINING_IMAGE", raising=False)
+    monkeypatch.delenv("MVP_TRAINING_COMMAND", raising=False)
+    assert profile_for_id(base.id).image_name == base.image_name
+
+    monkeypatch.setenv("MVP_TRAINING_IMAGE", "registry.example/unwork-sd15-lora:7")
+    monkeypatch.setenv("MVP_TRAINING_COMMAND", "sleep 60")
+    overridden = profile_for_id(base.id)
+
+    assert overridden.image_name == "registry.example/unwork-sd15-lora:7"
+    assert overridden.start_command == "sleep 60"
+    # 비교·추천에 쓰이는 값은 그대로여야 한다.
+    assert overridden.estimated_gpu_cost_krw == base.estimated_gpu_cost_krw
+    assert overridden.runpod_gpu_type_id == base.runpod_gpu_type_id

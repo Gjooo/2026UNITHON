@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 
@@ -92,8 +92,27 @@ GPU_EXECUTION_PROFILES: tuple[GpuExecutionProfile, ...] = (
 def profile_for_id(profile_id: str) -> GpuExecutionProfile:
     for profile in GPU_EXECUTION_PROFILES:
         if profile.id == profile_id:
-            return profile
+            return _with_overrides(profile)
     raise KeyError(f"Unknown MVP GPU profile: {profile_id}")
+
+
+def _with_overrides(profile: GpuExecutionProfile) -> GpuExecutionProfile:
+    """실행 이미지와 명령을 배포 환경에서 바꿀 수 있게 한다.
+
+    학습 이미지는 레지스트리에 올린 실제 태그로 바뀌고, 리허설에서는 학습
+    대신 짧은 명령으로 Pod 생애주기만 확인하고 싶을 때가 있다. 둘 다 코드
+    변경 없이 처리한다. 비교·추천에 쓰이는 값은 override 대상이 아니다.
+    """
+
+    image = os.getenv("MVP_TRAINING_IMAGE", "").strip()
+    command = os.getenv("MVP_TRAINING_COMMAND", "").strip()
+    if not image and not command:
+        return profile
+    return replace(
+        profile,
+        image_name=image or profile.image_name,
+        start_command=command or profile.start_command,
+    )
 
 
 PROVIDER_MODES = ("fake", "runpod")
