@@ -14,7 +14,8 @@
     "test:e2e:fake": "playwright test",
     "test:e2e:backend": "playwright test --config playwright.backend.config.ts",
     "test:visual": "playwright test --config playwright.visual.config.ts",
-    "smoke:runpod": "node scripts/smoke-runpod.mjs"
+    "smoke:runpod": "node scripts/smoke-runpod.mjs",
+    "test:contract": "node scripts/check-contract.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

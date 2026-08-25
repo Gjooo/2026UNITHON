@@ -8,6 +8,7 @@ import balanced from '@/test/fixtures/jobs/draft-balanced.json'
 import startAccepted from '@/test/fixtures/jobs/start-accepted.json'
 import demoBusy from '@/test/fixtures/errors/demo-busy.json'
 import executionAlreadyUsed from '@/test/fixtures/errors/execution-already-used.json'
+import runpodUnavailable from '@/test/fixtures/errors/runpod-unavailable.json'
 
 type User = ReturnType<typeof userEvent.setup>
 
@@ -164,5 +165,26 @@ describe('실행 승인', () => {
       screen.getByText('이 브라우저에서는 실제 실행을 한 번만 할 수 있습니다.'),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '실행 승인' })).toBeDisabled()
+  })
+
+  it('shows_provider_unavailable_with_a_next_action', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.post('*/api/v1/jobs/:jobId/start', () =>
+        HttpResponse.json(runpodUnavailable, { status: 503 }),
+      ),
+    )
+
+    await reachPlanReview(user)
+    await user.click(screen.getByRole('button', { name: '실행 승인' }))
+    const dialog = await screen.findByRole('dialog', { name: '실행 승인' })
+    await user.click(within(dialog).getByRole('button', { name: '승인하고 실행 시작' }))
+
+    // 자동 재시도하지 않고, 계약을 유지한 채 다음 행동을 알린다.
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '실행 환경을 시작하거나 확인하지 못했습니다. 잠시 후 다시 확인해 주세요.',
+    )
+    expect(screen.getByRole('region', { name: 'Agent 추천 실행안' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '실행 승인' })).toBeEnabled()
   })
 })

@@ -13,6 +13,7 @@ import terminating from '@/test/fixtures/jobs/terminating.json'
 import completed from '@/test/fixtures/jobs/completed.json'
 import cancelled from '@/test/fixtures/jobs/cancelled.json'
 import terminatingFailed from '@/test/fixtures/jobs/terminating-failed.json'
+import invalidJobState from '@/test/fixtures/errors/invalid-job-state.json'
 
 type User = ReturnType<typeof userEvent.setup>
 
@@ -236,5 +237,30 @@ describe('실행 추적', () => {
     // 실측 7분 30초. 안내가 없으면 멈춘 것으로 읽힌다.
     const tracker = await screen.findByRole('region', { name: '실행 상태' })
     expect(within(tracker).getByText(/몇 분/)).toBeInTheDocument()
+  })
+
+  it('explains_when_cancel_is_no_longer_possible', async () => {
+    const user = setup()
+    server.use(
+      http.post('*/api/v1/jobs/:jobId/cancel', () =>
+        HttpResponse.json(invalidJobState, { status: 409 }),
+      ),
+    )
+
+    setServed(running)
+    await reachTracking(user)
+    await waitFor(() =>
+      expect(screen.getByText('학습을 실행하고 있어요')).toBeInTheDocument(),
+    )
+
+    await user.click(screen.getByRole('button', { name: '실행 중단' }))
+    const dialog = await screen.findByRole('dialog', { name: '실행을 중단할까요?' })
+    await user.click(within(dialog).getByRole('button', { name: '중단하기' }))
+
+    // 서버가 거절하면 상태를 추정하지 말고 그대로 알린다.
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '이 작업은 현재 이 행동을 할 수 있는 상태가 아닙니다.',
+    )
+    expect(screen.getByText('학습을 실행하고 있어요')).toBeInTheDocument()
   })
 })
