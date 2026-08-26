@@ -65,20 +65,30 @@ describe('랜딩', () => {
     expect(screen.queryAllByRole('button', { name: '시작하기' })).toHaveLength(0)
   })
 
-  it('explains_the_fee_model_and_that_it_is_not_charged_yet', async () => {
+  it('shows_that_gpu_cost_is_paid_directly_to_the_provider', async () => {
     renderApp()
 
     const pricing = await screen.findByRole('region', { name: '요금' })
 
-    // 수수료 모델은 밝히되, 지금 청구하지 않는다는 것도 같이 말한다.
-    expect(within(pricing).getByText('GPU 사용료의 15%')).toBeInTheDocument()
-    expect(pricing.textContent).toMatch(/현재는 청구하지\s*않습니다/)
+    // GPU를 재판매하지 않는다는 것이 이 BM의 뼈대다.
+    expect(within(pricing).getByText('GPU 사용료')).toBeInTheDocument()
+    expect(within(pricing).getByText('SaaS 이용료')).toBeInTheDocument()
+    expect(within(pricing).getByText('GPU Provider')).toBeInTheDocument()
 
-    // 앱에 나오는 숫자에 수수료가 없다는 점을 명시한다.
-    expect(pricing.textContent).toMatch(/수수료가 포함돼 있지\s*않습니다/)
+    // 요금제는 있지만 검증 전 가격 숫자는 걸지 않는다.
+    expect(within(pricing).getByText('Free')).toBeInTheDocument()
+    expect(within(pricing).getByText('Pro')).toBeInTheDocument()
+    expect(within(pricing).getByText('Lab')).toBeInTheDocument()
+    expect(pricing.textContent).not.toMatch(/원|₩/)
+  })
 
-    // 지어낸 구독 등급은 만들지 않는다.
-    expect(pricing.textContent).not.toMatch(/Free|Pro|Team|무료 체험/)
+  it('explains_why_it_does_not_take_a_cut_of_gpu_spend', async () => {
+    renderApp()
+
+    const basis = await screen.findByRole('region', { name: '과금 기준' })
+    // 비용을 줄여 주는 것이 가치인데 사용액에 비례해 벌면 인센티브가 충돌한다.
+    expect(basis.textContent).toMatch(/GPU 사용액/)
+    expect(within(basis).getByText(/관리한 Training Job과 팀 운영/)).toBeInTheDocument()
   })
 
   it('states_who_decides_what', async () => {

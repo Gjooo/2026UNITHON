@@ -168,35 +168,104 @@ export function Landing({ onStart }: { onStart: () => void }) {
 
       <div className={styles.band}>
         <section className={styles.section} aria-label="요금">
-          <h2 className={styles.sectionTitle}>쓴 만큼만 냅니다</h2>
+          <h2 className={styles.sectionTitle}>GPU를 팔지 않습니다</h2>
           <p className={styles.sectionLead}>
-            구독료도 최소 사용료도 없습니다. GPU 사용료는 연결한 본인 Runpod 계정에서
-            사용한 만큼 직접 발생하고, Agent 실행 수수료는 그 위에 얹힙니다. 승인 전에
-            예상 비용을 먼저 보여 드립니다.
+            GPU는 공급자가 판매합니다. Guupy는 GPU를 쓰기 위해 사람이 하던 실행과
+            통제를 판매합니다. 공급자 계정은 지금 쓰던 것을 그대로 쓰고, GPU 사용료는
+            그 계정으로 직접 청구됩니다.
           </p>
 
-          <div className={styles.priceCard}>
-            <div className={styles.priceLines}>
-              <div className={styles.priceLine}>
-                <span className={styles.priceLabel}>GPU 사용료</span>
-                <span className={styles.priceValue}>사용한 만큼</span>
+          <div className={styles.flow}>
+            <div className={styles.flowNode}>
+              <p className={styles.flowNodeTitle}>연구실</p>
+              <p className={styles.flowNodeSub}>고객</p>
+            </div>
+
+            <div className={styles.flowArrows}>
+              <div className={styles.flowArrow}>
+                <span>GPU 사용료</span>
+                <span className={styles.flowArrowLine} aria-hidden="true" />
               </div>
-              <div className={styles.priceLine}>
-                <span className={styles.priceLabel}>Agent 실행 수수료</span>
-                <span className={styles.priceValue}>GPU 사용료의 15%</span>
-              </div>
-              <div className={`${styles.priceLine} ${styles.priceLineTotal}`}>
-                <span>지금 청구되는 금액</span>
-                <span className={styles.priceValue}>₩0</span>
+              <div className={styles.flowArrow}>
+                <span>SaaS 이용료</span>
+                <span className={styles.flowArrowLine} aria-hidden="true" />
               </div>
             </div>
-            <p className={styles.fine}>
-              Agent 실행 수수료는 위 요율로 계획하고 있으며 <strong>현재는 청구하지
-              않습니다.</strong> 화면에 표시되는 예상 비용(Stable Diffusion 1.5 LoRA 학습
-              한 번 기준 ₩450–₩900)은 GPU 사용료 추정치이며 수수료가 포함돼 있지
-              않습니다. 실제 청구는 Runpod이 사용한 시간만큼 본인 계정에 합니다.
-            </p>
+
+            <div>
+              <div className={styles.flowNode}>
+                <p className={styles.flowNodeTitle}>GPU Provider</p>
+                <p className={styles.flowNodeSub}>Runpod</p>
+              </div>
+              <div style={{ height: 'var(--space-md)' }} />
+              <div className={`${styles.flowNode} ${styles.flowNodeSelf}`}>
+                <p className={styles.flowNodeTitle}>Guupy</p>
+                <p className={styles.flowNodeSub}>Training Agent</p>
+              </div>
+            </div>
+
+            <p className={styles.flowApi}>Guupy → GPU Provider · API 호출</p>
           </div>
+
+          <p className={styles.fine}>
+            GPU 구매·재고·재판매를 하지 않으므로 GPU 가격 변동 위험을 고객에게 얹지
+            않습니다.
+          </p>
+
+          <table className={styles.tiers}>
+            <thead>
+              <tr>
+                <th scope="col">상품</th>
+                <th scope="col">대상</th>
+                <th scope="col">과금 구조</th>
+                <th scope="col">핵심 가치</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Free</th>
+                <td>개인 연구자</td>
+                <td>무료, 제한된 Job</td>
+                <td>첫 외부 GPU 실행 경험</td>
+              </tr>
+              <tr>
+                <th scope="row">Pro</th>
+                <td>반복 학습 개인</td>
+                <td>월 구독 + 초과 Job</td>
+                <td>반복 실행, 비용 기록, 재실행</td>
+              </tr>
+              <tr>
+                <th scope="row">Lab</th>
+                <td>대학 연구실</td>
+                <td>연구실 단위 월 구독 + 사용량</td>
+                <td>예산, 승인, Job 이력, 비용 통제</td>
+              </tr>
+            </tbody>
+          </table>
+          <p className={styles.fine}>
+            구체 요금은 연구실 Pilot과 지불의향 검증 후 확정합니다.
+          </p>
+        </section>
+      </div>
+
+      <div className={styles.band}>
+        <section className={styles.section} aria-label="과금 기준">
+          <h2 className={styles.sectionTitle}>GPU 사용액에 비례해 받지 않습니다</h2>
+          <ul className={styles.reasons}>
+            <li className={styles.reason}>
+              GPU 사용액의 일정 비율을 받는 구조는 고객이 GPU를 많이 쓸수록 우리 매출이
+              늘어납니다.
+            </li>
+            <li className={styles.reason}>
+              그런데 이 서비스의 가치는 불필요한 GPU 비용과 운영 낭비를 줄이는 것입니다.
+              비용을 아껴 줄수록 우리가 손해를 보는 구조라면, 그 약속을 믿을 이유가
+              없습니다.
+            </li>
+            <li className={styles.reason}>
+              그래서 GPU 사용금액이 아니라 <strong>관리한 Training Job과 팀 운영
+              가치</strong>를 기준으로 과금합니다.
+            </li>
+          </ul>
         </section>
       </div>
 
