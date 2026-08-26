@@ -1,0 +1,552 @@
+{
+  "POST /session": {
+    "status": 201,
+    "body": {
+      "expiresAt": "2026-09-01T19:40:35.305815Z",
+      "executionAllowance": {
+        "used": 0,
+        "limit": 1
+      }
+    },
+    "note": "Set-Cookie: unwork_session=<token>; HttpOnly; Max-Age=604800; Path=/; SameSite=lax"
+  },
+  "POST /jobs (401 쿠키 없음)": {
+    "status": 401,
+    "body": {
+      "error": {
+        "code": "SESSION_REQUIRED",
+        "message": "익명 세션이 필요합니다."
+      }
+    },
+    "note": ""
+  },
+  "POST /jobs (400 형식 오류)": {
+    "status": 400,
+    "body": {
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "message": "요청 형식이 올바르지 않습니다."
+      }
+    },
+    "note": ""
+  },
+  "POST /jobs (422 예산 부족)": {
+    "status": 422,
+    "body": {
+      "error": {
+        "code": "NO_ELIGIBLE_PLAN",
+        "message": "입력한 예산 안에서 실행할 수 있는 GPU 후보가 없습니다."
+      }
+    },
+    "note": ""
+  },
+  "POST /jobs (201 DRAFT)": {
+    "status": 201,
+    "body": {
+      "id": "3a6d5ae8-aaa0-421d-8a71-1aa759c2109c",
+      "scenario": {
+        "name": "Stable Diffusion 1.5 LoRA",
+        "repositoryUrl": "https://github.com/example/golden-path",
+        "executionCommand": "./run-demo-training.sh",
+        "requiredVramGb": 24,
+        "maxRuntimeMinutes": 10
+      },
+      "constraint": {
+        "maxBudgetKrw": 1000,
+        "priority": "BALANCED"
+      },
+      "executionPlan": {
+        "priceDataType": "DEMO_SNAPSHOT",
+        "estimateDisclaimer": "예상 시간과 GPU 비용은 사전 검증한 실행 프로필 기준 추정치이며 실제 청구액을 보장하지 않습니다.",
+        "selectionPolicyVersion": "mvp-gpu-selection-v1",
+        "candidates": [
+          {
+            "profileId": "runpod-rtx4090-v1",
+            "provider": "Runpod",
+            "gpuType": "NVIDIA RTX 4090",
+            "estimatedRuntimeMinutes": 10,
+            "estimatedGpuCostKrw": 450,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "profileId": "runpod-l40s-v1",
+            "provider": "Runpod",
+            "gpuType": "NVIDIA L40S",
+            "estimatedRuntimeMinutes": 7,
+            "estimatedGpuCostKrw": 650,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "profileId": "runpod-a100-v1",
+            "provider": "Runpod",
+            "gpuType": "NVIDIA A100 40GB",
+            "estimatedRuntimeMinutes": 5,
+            "estimatedGpuCostKrw": 900,
+            "eligibility": "ELIGIBLE"
+          }
+        ],
+        "recommended": {
+          "profileId": "runpod-l40s-v1",
+          "provider": "Runpod",
+          "gpuType": "NVIDIA L40S",
+          "estimatedRuntimeMinutes": 7,
+          "estimatedGpuCostKrw": 650,
+          "reason": "예상 GPU 비용과 실행시간의 균형 점수가 가장 낮습니다."
+        }
+      },
+      "status": "DRAFT",
+      "failureMessage": null,
+      "exitCode": null,
+      "completionLog": null,
+      "startedAt": null,
+      "finishedAt": null,
+      "podTerminatedAt": null
+    },
+    "note": ""
+  },
+  "GET /jobs/{id} (DRAFT)": {
+    "status": 200,
+    "body": {
+      "id": "3a6d5ae8-aaa0-421d-8a71-1aa759c2109c",
+      "scenario": {
+        "name": "Stable Diffusion 1.5 LoRA",
+        "repositoryUrl": "https://github.com/example/golden-path",
+        "executionCommand": "./run-demo-training.sh",
+        "requiredVramGb": 24,
+        "maxRuntimeMinutes": 10
+      },
+      "constraint": {
+        "maxBudgetKrw": 1000,
+        "priority": "BALANCED"
+      },
+      "executionPlan": {
+        "priceDataType": "DEMO_SNAPSHOT",
+        "estimateDisclaimer": "예상 시간과 GPU 비용은 사전 검증한 실행 프로필 기준 추정치이며 실제 청구액을 보장하지 않습니다.",
+        "selectionPolicyVersion": "mvp-gpu-selection-v1",
+        "candidates": [
+          {
+            "profileId": "runpod-rtx4090-v1",
+            "provider": "Runpod",
+            "gpuType": "NVIDIA RTX 4090",
+            "estimatedRuntimeMinutes": 10,
+            "estimatedGpuCostKrw": 450,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "profileId": "runpod-l40s-v1",
+            "provider": "Runpod",
+            "gpuType": "NVIDIA L40S",
+            "estimatedRuntimeMinutes": 7,
+            "estimatedGpuCostKrw": 650,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "profileId": "runpod-a100-v1",
+            "provider": "Runpod",
+            "gpuType": "NVIDIA A100 40GB",
+            "estimatedRuntimeMinutes": 5,
+            "estimatedGpuCostKrw": 900,
+            "eligibility": "ELIGIBLE"
+          }
+        ],
+        "recommended": {
+          "profileId": "runpod-l40s-v1",
+          "provider": "Runpod",
+          "gpuType": "NVIDIA L40S",
+          "estimatedRuntimeMinutes": 7,
+          "estimatedGpuCostKrw": 650,
+          "reason": "예상 GPU 비용과 실행시간의 균형 점수가 가장 낮습니다."
+        }
+      },
+      "status": "DRAFT",
+      "failureMessage": null,
+      "exitCode": null,
+      "completionLog": null,
+      "startedAt": null,
+      "finishedAt": null,
+      "podTerminatedAt": null
+    },
+    "note": ""
+  },
+  "POST /jobs/{id}/start (202)": {
+    "status": 202,
+    "body": {
+      "id": "3a6d5ae8-aaa0-421d-8a71-1aa759c2109c",
+      "status": "PROVISIONING"
+    },
+    "note": ""
+  },
+  "GET /jobs/{id} (PROVISIONING)": {
+    "status": 200,
+    "body": {
+      "id": "3a6d5ae8-aaa0-421d-8a71-1aa759c2109c",
+      "scenario": {
+        "name": "Stable Diffusion 1.5 LoRA",
+        "repositoryUrl": "https://github.com/example/golden-path",
+        "executionCommand": "./run-demo-training.sh",
+        "requiredVramGb": 24,
+        "maxRuntimeMinutes": 10
+      },
+      "constraint": {
+        "maxBudgetKrw": 1000,
+        "priority": "BALANCED"
+      },
+      "executionPlan": {
+        "priceDataType": "DEMO_SNAPSHOT",
+        "estimateDisclaimer": "예상 시간과 GPU 비용은 사전 검증한 실행 프로필 기준 추정치이며 실제 청구액을 보장하지 않습니다.",
+        "selectionPolicyVersion": "mvp-gpu-selection-v1",
+        "candidates": [
+          {
+            "profileId": "runpod-rtx4090-v1",
+            "provider": "Runpod",
+            "gpuType": "NVIDIA RTX 4090",
+            "estimatedRuntimeMinutes": 10,
+            "estimatedGpuCostKrw": 450,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "profileId": "runpod-l40s-v1",
+            "provider": "Runpod",
+            "gpuType": "NVIDIA L40S",
+            "estimatedRuntimeMinutes": 7,
+            "estimatedGpuCostKrw": 650,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "profileId": "runpod-a100-v1",
+            "provider": "Runpod",
+            "gpuType": "NVIDIA A100 40GB",
+            "estimatedRuntimeMinutes": 5,
+            "estimatedGpuCostKrw": 900,
+            "eligibility": "ELIGIBLE"
+          }
+        ],
+        "recommended": {
+          "profileId": "runpod-l40s-v1",
+          "provider": "Runpod",
+          "gpuType": "NVIDIA L40S",
+          "estimatedRuntimeMinutes": 7,
+          "estimatedGpuCostKrw": 650,
+          "reason": "예상 GPU 비용과 실행시간의 균형 점수가 가장 낮습니다."
+        }
+      },
+      "status": "PROVISIONING",
+      "failureMessage": null,
+      "exitCode": null,
+      "completionLog": null,
+      "startedAt": "2026-08-25T19:40:35.312607Z",
+      "finishedAt": null,
+      "podTerminatedAt": null
+    },
+    "note": ""
+  },
+  "GET /jobs/{id} (RUNNING)": {
+    "status": 200,
+    "body": {
+      "id": "3a6d5ae8-aaa0-421d-8a71-1aa759c2109c",
+      "scenario": {
+        "name": "Stable Diffusion 1.5 LoRA",
+        "repositoryUrl": "https://github.com/example/golden-path",
+        "executionCommand": "./run-demo-training.sh",
+        "requiredVramGb": 24,
+        "maxRuntimeMinutes": 10
+      },
+      "constraint": {
+        "maxBudgetKrw": 1000,
+        "priority": "BALANCED"
+      },
+      "executionPlan": {
+        "priceDataType": "DEMO_SNAPSHOT",
+        "estimateDisclaimer": "예상 시간과 GPU 비용은 사전 검증한 실행 프로필 기준 추정치이며 실제 청구액을 보장하지 않습니다.",
+        "selectionPolicyVersion": "mvp-gpu-selection-v1",
+        "candidates": [
+          {
+            "profileId": "runpod-rtx4090-v1",
+            "provider": "Runpod",
+            "gpuType": "NVIDIA RTX 4090",
+            "estimatedRuntimeMinutes": 10,
+            "estimatedGpuCostKrw": 450,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "profileId": "runpod-l40s-v1",
+            "provider": "Runpod",
+            "gpuType": "NVIDIA L40S",
+            "estimatedRuntimeMinutes": 7,
+            "estimatedGpuCostKrw": 650,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "profileId": "runpod-a100-v1",
+            "provider": "Runpod",
+            "gpuType": "NVIDIA A100 40GB",
+            "estimatedRuntimeMinutes": 5,
+            "estimatedGpuCostKrw": 900,
+            "eligibility": "ELIGIBLE"
+          }
+        ],
+        "recommended": {
+          "profileId": "runpod-l40s-v1",
+          "provider": "Runpod",
+          "gpuType": "NVIDIA L40S",
+          "estimatedRuntimeMinutes": 7,
+          "estimatedGpuCostKrw": 650,
+          "reason": "예상 GPU 비용과 실행시간의 균형 점수가 가장 낮습니다."
+        }
+      },
+      "status": "RUNNING",
+      "failureMessage": null,
+      "exitCode": null,
+      "completionLog": null,
+      "startedAt": "2026-08-25T19:40:35.312607Z",
+      "finishedAt": null,
+      "podTerminatedAt": null
+    },
+    "note": ""
+  },
+  "POST /jobs/{id}/start (409 세션 실행 소진)": {
+    "status": 409,
+    "body": {
+      "error": {
+        "code": "EXECUTION_ALREADY_USED",
+        "message": "이 세션에서는 이미 실행을 시작했습니다."
+      }
+    },
+    "note": ""
+  },
+  "POST /jobs/{id}/start (409 동시 실행 중)": {
+    "status": 409,
+    "body": {
+      "error": {
+        "code": "DEMO_BUSY",
+        "message": "다른 실행이 진행 중입니다. 잠시 후 다시 시도해 주세요."
+      }
+    },
+    "note": ""
+  },
+  "GET /jobs/{id} (404 다른 세션)": {
+    "status": 404,
+    "body": {
+      "error": {
+        "code": "JOB_NOT_FOUND",
+        "message": "요청한 작업을 찾을 수 없습니다."
+      }
+    },
+    "note": ""
+  },
+  "POST /internal/jobs/{id}/completion (204)": {
+    "status": 204,
+    "body": null,
+    "note": ""
+  },
+  "GET /jobs/{id} (TERMINATING)": {
+    "status": 200,
+    "body": {
+      "id": "3a6d5ae8-aaa0-421d-8a71-1aa759c2109c",
+      "scenario": {
+        "name": "Stable Diffusion 1.5 LoRA",
+        "repositoryUrl": "https://github.com/example/golden-path",
+        "executionCommand": "./run-demo-training.sh",
+        "requiredVramGb": 24,
+        "maxRuntimeMinutes": 10
+      },
+      "constraint": {
+        "maxBudgetKrw": 1000,
+        "priority": "BALANCED"
+      },
+      "executionPlan": {
+        "priceDataType": "DEMO_SNAPSHOT",
+        "estimateDisclaimer": "예상 시간과 GPU 비용은 사전 검증한 실행 프로필 기준 추정치이며 실제 청구액을 보장하지 않습니다.",
+        "selectionPolicyVersion": "mvp-gpu-selection-v1",
+        "candidates": [
+          {
+            "profileId": "runpod-rtx4090-v1",
+            "provider": "Runpod",
+            "gpuType": "NVIDIA RTX 4090",
+            "estimatedRuntimeMinutes": 10,
+            "estimatedGpuCostKrw": 450,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "profileId": "runpod-l40s-v1",
+            "provider": "Runpod",
+            "gpuType": "NVIDIA L40S",
+            "estimatedRuntimeMinutes": 7,
+            "estimatedGpuCostKrw": 650,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "profileId": "runpod-a100-v1",
+            "provider": "Runpod",
+            "gpuType": "NVIDIA A100 40GB",
+            "estimatedRuntimeMinutes": 5,
+            "estimatedGpuCostKrw": 900,
+            "eligibility": "ELIGIBLE"
+          }
+        ],
+        "recommended": {
+          "profileId": "runpod-l40s-v1",
+          "provider": "Runpod",
+          "gpuType": "NVIDIA L40S",
+          "estimatedRuntimeMinutes": 7,
+          "estimatedGpuCostKrw": 650,
+          "reason": "예상 GPU 비용과 실행시간의 균형 점수가 가장 낮습니다."
+        }
+      },
+      "status": "TERMINATING",
+      "failureMessage": null,
+      "exitCode": 0,
+      "completionLog": "Training completed",
+      "startedAt": "2026-08-25T19:40:35.312607Z",
+      "finishedAt": null,
+      "podTerminatedAt": null
+    },
+    "note": ""
+  },
+  "GET /jobs/{id} (COMPLETED)": {
+    "status": 200,
+    "body": {
+      "id": "3a6d5ae8-aaa0-421d-8a71-1aa759c2109c",
+      "scenario": {
+        "name": "Stable Diffusion 1.5 LoRA",
+        "repositoryUrl": "https://github.com/example/golden-path",
+        "executionCommand": "./run-demo-training.sh",
+        "requiredVramGb": 24,
+        "maxRuntimeMinutes": 10
+      },
+      "constraint": {
+        "maxBudgetKrw": 1000,
+        "priority": "BALANCED"
+      },
+      "executionPlan": {
+        "priceDataType": "DEMO_SNAPSHOT",
+        "estimateDisclaimer": "예상 시간과 GPU 비용은 사전 검증한 실행 프로필 기준 추정치이며 실제 청구액을 보장하지 않습니다.",
+        "selectionPolicyVersion": "mvp-gpu-selection-v1",
+        "candidates": [
+          {
+            "profileId": "runpod-rtx4090-v1",
+            "provider": "Runpod",
+            "gpuType": "NVIDIA RTX 4090",
+            "estimatedRuntimeMinutes": 10,
+            "estimatedGpuCostKrw": 450,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "profileId": "runpod-l40s-v1",
+            "provider": "Runpod",
+            "gpuType": "NVIDIA L40S",
+            "estimatedRuntimeMinutes": 7,
+            "estimatedGpuCostKrw": 650,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "profileId": "runpod-a100-v1",
+            "provider": "Runpod",
+            "gpuType": "NVIDIA A100 40GB",
+            "estimatedRuntimeMinutes": 5,
+            "estimatedGpuCostKrw": 900,
+            "eligibility": "ELIGIBLE"
+          }
+        ],
+        "recommended": {
+          "profileId": "runpod-l40s-v1",
+          "provider": "Runpod",
+          "gpuType": "NVIDIA L40S",
+          "estimatedRuntimeMinutes": 7,
+          "estimatedGpuCostKrw": 650,
+          "reason": "예상 GPU 비용과 실행시간의 균형 점수가 가장 낮습니다."
+        }
+      },
+      "status": "COMPLETED",
+      "failureMessage": null,
+      "exitCode": 0,
+      "completionLog": "Training completed",
+      "startedAt": "2026-08-25T19:40:35.312607Z",
+      "finishedAt": "2026-08-25T19:40:50.333313Z",
+      "podTerminatedAt": "2026-08-25T19:40:50.333313Z"
+    },
+    "note": ""
+  },
+  "POST /jobs/{id}/cancel (409 종료된 작업)": {
+    "status": 409,
+    "body": {
+      "error": {
+        "code": "INVALID_JOB_STATE",
+        "message": "현재 상태에서는 중단할 수 없습니다."
+      }
+    },
+    "note": ""
+  },
+  "POST /jobs/{id}/cancel (202)": {
+    "status": 202,
+    "body": {
+      "id": "3b6f5281-2624-4088-899e-62616c1d3700",
+      "status": "TERMINATING"
+    },
+    "note": ""
+  },
+  "GET /jobs/{id} (CANCELLED)": {
+    "status": 200,
+    "body": {
+      "id": "3b6f5281-2624-4088-899e-62616c1d3700",
+      "scenario": {
+        "name": "Stable Diffusion 1.5 LoRA",
+        "repositoryUrl": "https://github.com/example/golden-path",
+        "executionCommand": "./run-demo-training.sh",
+        "requiredVramGb": 24,
+        "maxRuntimeMinutes": 10
+      },
+      "constraint": {
+        "maxBudgetKrw": 1000,
+        "priority": "FASTEST"
+      },
+      "executionPlan": {
+        "priceDataType": "DEMO_SNAPSHOT",
+        "estimateDisclaimer": "예상 시간과 GPU 비용은 사전 검증한 실행 프로필 기준 추정치이며 실제 청구액을 보장하지 않습니다.",
+        "selectionPolicyVersion": "mvp-gpu-selection-v1",
+        "candidates": [
+          {
+            "profileId": "runpod-rtx4090-v1",
+            "provider": "Runpod",
+            "gpuType": "NVIDIA RTX 4090",
+            "estimatedRuntimeMinutes": 10,
+            "estimatedGpuCostKrw": 450,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "profileId": "runpod-l40s-v1",
+            "provider": "Runpod",
+            "gpuType": "NVIDIA L40S",
+            "estimatedRuntimeMinutes": 7,
+            "estimatedGpuCostKrw": 650,
+            "eligibility": "ELIGIBLE"
+          },
+          {
+            "profileId": "runpod-a100-v1",
+            "provider": "Runpod",
+            "gpuType": "NVIDIA A100 40GB",
+            "estimatedRuntimeMinutes": 5,
+            "estimatedGpuCostKrw": 900,
+            "eligibility": "ELIGIBLE"
+          }
+        ],
+        "recommended": {
+          "profileId": "runpod-a100-v1",
+          "provider": "Runpod",
+          "gpuType": "NVIDIA A100 40GB",
+          "estimatedRuntimeMinutes": 5,
+          "estimatedGpuCostKrw": 900,
+          "reason": "예산 안 후보 중 예상 실행시간이 가장 짧습니다."
+        }
+      },
+      "status": "CANCELLED",
+      "failureMessage": null,
+      "exitCode": null,
+      "completionLog": null,
+      "startedAt": "2026-08-25T19:40:50.515266Z",
+      "finishedAt": "2026-08-25T19:40:55.526536Z",
+      "podTerminatedAt": "2026-08-25T19:40:55.526536Z"
+    },
+    "note": ""
+  }
+}

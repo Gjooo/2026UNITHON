@@ -1,0 +1,33 @@
+{
+  "fixture_type": "RUNPOD_PROVISIONING_DEMO_DO_NOT_USE_AS_LIVE",
+  "description": "Synthetic pricing/availability with explicitly stored RunPod GPU IDs for dry-run only.",
+  "offers": [
+    {
+      "provider": "RunPod",
+      "name": "RTX 4090",
+      "provider_resource_id": "NVIDIA GeForce RTX 4090",
+      "vram_gb": 24,
+      "price_per_hour": 0.70,
+      "performance_score": 1.0,
+      "available": true
+    },
+    {
+      "provider": "RunPod",
+      "name": "A100 80GB",
+      "provider_resource_id": "NVIDIA A100 80GB PCIe",
+      "vram_gb": 80,
+      "price_per_hour": 1.90,
+      "performance_score": 2.4,
+      "available": true
+    },
+    {
+      "provider": "RunPod",
+      "name": "H100 80GB",
+      "provider_resource_id": "NVIDIA H100 80GB HBM3",
+      "vram_gb": 80,
+      "price_per_hour": 2.80,
+      "performance_score": 4.0,
+      "available": true
+    }
+  ]
+}

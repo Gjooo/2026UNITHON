@@ -1,0 +1,32 @@
+# 홈서버 운영용. 인스턴스는 하나여야 하고(`replicas` 를 늘리지 않는다),
+# SQLite 는 재시작에도 남아야 한다.
+services:
+  backend:
+    build: .
+    image: unwork-backend:latest
+    container_name: unwork-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8080"
+    volumes:
+      - unwork-data:/data
+    environment:
+      # 실제 실행 전까지는 fake 로 두어 GPU 비용이 발생하지 않게 한다.
+      MVP_PROVIDER_MODE: "${MVP_PROVIDER_MODE:-fake}"
+      MVP_DATABASE_PATH: /data/mvp.sqlite3
+      MVP_MAX_RUNTIME_MINUTES: "${MVP_MAX_RUNTIME_MINUTES:-10}"
+      # 로컬 프런트엔드는 http 로 접속한다. Secure 쿠키는 http 로 전송되지 않는다.
+      MVP_COOKIE_SECURE: "${MVP_COOKIE_SECURE:-true}"
+      # 터널이 붙여 주는 공개 HTTPS 주소. Runpod 컨테이너가 이 주소로 완료를 알린다.
+      BACKEND_PUBLIC_BASE_URL: "${BACKEND_PUBLIC_BASE_URL:-}"
+      FRONTEND_ORIGINS: "${FRONTEND_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000}"
+      RUNPOD_API_KEY: "${RUNPOD_API_KEY:-}"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8080/health',timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+volumes:
+  unwork-data:

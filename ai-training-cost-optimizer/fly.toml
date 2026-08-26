@@ -1,0 +1,37 @@
+# 실행 중인 학습의 상태·timeout·GPU 종료를 이 프로세스가 소유한다.
+# 따라서 인스턴스는 항상 1개여야 하고, 잠들면 안 되며, SQLite는 볼륨에 있어야 한다.
+app = "unwork-agent"
+primary_region = "nrt"
+
+[build]
+
+[env]
+  # 첫 배포는 fake 모드로 올려 공개 HTTPS 주소가 실제로 열리는지 확인한다.
+  # RUNPOD_API_KEY 를 secret 으로 넣은 뒤 "runpod" 으로 바꾼다.
+  MVP_PROVIDER_MODE = "fake"
+  MVP_DATABASE_PATH = "/data/mvp.sqlite3"
+  MVP_MAX_RUNTIME_MINUTES = "10"
+  PORT = "8080"
+
+[[mounts]]
+  source = "unwork_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # 자동 정지·자동 시작은 반드시 꺼둔다. 잠든 사이 GPU가 계속 과금될 수 있다.
+  auto_stop_machines = false
+  auto_start_machines = false
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "15s"
+    method = "GET"
+    path = "/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
