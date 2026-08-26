@@ -69,7 +69,7 @@ export function Landing({ onStart }: { onStart: () => void }) {
   return (
     <div className={styles.page}>
       <header className={styles.nav}>
-        <span className={styles.wordmark}>UNWORK</span>
+        <span className={styles.wordmark}>Guupy</span>
         <span className={styles.navSpacer} />
         <Button variant="primary" onClick={onStart}>
           시작하기
@@ -213,7 +213,7 @@ export function Landing({ onStart }: { onStart: () => void }) {
         </div>
       </section>
 
-      <footer className={styles.footer}>UNWORK — 학습 실행 Agent</footer>
+      <footer className={styles.footer}>Guupy — 학습 실행 Agent</footer>
     </div>
   )
 }

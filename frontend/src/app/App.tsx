@@ -221,8 +221,8 @@ function Screen({
   return (
     <div className={styles.app}>
       <header className={styles.header}>
-        <button className={styles.wordmark} type="button" onClick={onHome} aria-label="UNWORK 홈으로">
-          UNWORK
+        <button className={styles.wordmark} type="button" onClick={onHome} aria-label="Guupy 홈으로">
+          Guupy
         </button>
         <SessionStatus connected={connected} />
       </header>

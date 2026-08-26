@@ -115,7 +115,7 @@ describe('랜딩', () => {
     await user.click(start)
     await screen.findByLabelText('최대 예산')
 
-    await user.click(screen.getByRole('button', { name: 'UNWORK 홈으로' }))
+    await user.click(screen.getByRole('button', { name: 'Guupy 홈으로' }))
 
     expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(
       'GPU를 다루지 않고 학습을 끝냅니다',

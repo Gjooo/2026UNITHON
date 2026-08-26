@@ -45,7 +45,7 @@ describe('App bootstrap', () => {
     renderApp()
     await enterService(user)
 
-    expect(screen.getByRole('banner')).toHaveTextContent('UNWORK')
+    expect(screen.getByRole('banner')).toHaveTextContent('Guupy')
     expect(await screen.findByText('익명 세션')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /로그인/ })).not.toBeInTheDocument()
   })
