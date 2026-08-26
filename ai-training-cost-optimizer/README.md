@@ -55,12 +55,28 @@ MVP API의 base URL은 `/api/v1`이다.
 
 #### 로컬 개발 모드
 
-`fake` 모드는 Runpod을 호출하지 않고 Pod 생애주기만 흉내 낸다. Pod는 약 10초 뒤 `RUNNING`이 되고, 종료 요청을 받으면 `TERMINATED`가 된다. 로컬에는 학습 컨테이너가 없으므로 완료 화면을 보려면 완료 callback을 직접 호출한다.
+`fake` 모드는 Runpod을 호출하지 않고 실행 한 판을 통째로 재현한다. 학습 컨테이너가 없으므로 **완료를 알리는 일까지** 시뮬레이터가 대신한다. 사람이 개입할 필요가 없다.
+
+```text
+PROVISIONING(0초) → RUNNING(6초) → TERMINATING(14초) → COMPLETED(18초)
+```
+
+시연에서 지켜볼 만한 길이로 잡은 값이며 환경변수로 조절한다.
+
+| 변수 | 기본값 | 뜻 |
+| --- | --- | --- |
+| `MVP_SIMULATED_PROVISIONING_SECONDS` | 6 | 실행 환경이 준비되기까지 |
+| `MVP_SIMULATED_TRAINING_SECONDS` | 8 | 학습이 도는 시간 |
+| `MVP_POLL_INTERVAL_SECONDS` | 2 | 서버가 자원 상태를 확인하는 주기 |
+
+중단을 누르면 완료 신호는 오지 않는다. 실제 컨테이너도 삭제되면 아무것도 보내지 못하기 때문이다.
+
+특정 결과를 강제로 만들려면 완료 callback을 직접 호출한다.
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/v1/internal/jobs/<jobId>/completion \
   -H "Content-Type: application/json" \
-  -d '{"outcome":"SUCCEEDED","exitCode":0,"message":"Training completed"}'
+  -d '{"outcome":"FAILED","exitCode":1,"message":"CUDA out of memory"}'
 ```
 
 HTTPS가 아닌 로컬 주소로 프런트엔드를 붙일 때는 `MVP_COOKIE_SECURE=false`가 필요하다. `Secure` cookie는 `http://`로 전송되지 않아 세션이 매 요청 끊긴다. 배포 환경에서는 기본값 `true`를 유지한다.

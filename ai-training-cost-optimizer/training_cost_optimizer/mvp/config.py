@@ -129,6 +129,9 @@ class MvpSettings:
     max_runtime_minutes: int
     cookie_secure: bool
     cookie_samesite: str
+    simulated_provisioning_seconds: float
+    simulated_training_seconds: float
+    poll_interval_seconds: float
 
 
 def get_settings() -> MvpSettings:
@@ -140,7 +143,27 @@ def get_settings() -> MvpSettings:
         max_runtime_minutes=_max_runtime_minutes(),
         cookie_secure=_cookie_secure(),
         cookie_samesite=_cookie_samesite(),
+        # 시연은 사용자 여정을 보여주는 것이 목적이다. 실제 실행의 8분을
+        # 재현하는 것이 아니라 같은 전이를 같은 순서로 30초 안에 보여준다.
+        simulated_provisioning_seconds=_positive_float(
+            "MVP_SIMULATED_PROVISIONING_SECONDS", 6.0
+        ),
+        simulated_training_seconds=_positive_float("MVP_SIMULATED_TRAINING_SECONDS", 8.0),
+        poll_interval_seconds=_positive_float("MVP_POLL_INTERVAL_SECONDS", 2.0),
     )
+
+
+def _positive_float(name: str, default: float) -> float:
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = float(raw)
+    except ValueError as exc:
+        raise MvpConfigError(f"{name} must be a positive number") from exc
+    if value <= 0:
+        raise MvpConfigError(f"{name} must be a positive number")
+    return value
 
 
 def _cookie_samesite() -> str:

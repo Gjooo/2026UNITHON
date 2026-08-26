@@ -65,7 +65,12 @@ def get_mvp_service() -> JobApplicationService:
     try:
         settings = get_settings()
         return _default_mvp_service(
-            str(settings.database_path), settings.provider_mode, settings.max_runtime_minutes
+            str(settings.database_path),
+            settings.provider_mode,
+            settings.max_runtime_minutes,
+            settings.simulated_provisioning_seconds,
+            settings.simulated_training_seconds,
+            settings.poll_interval_seconds,
         )
     except (MvpConfigError, RunpodLifecycleError) as exc:
         logger.error("MVP execution configuration is invalid: %s", exc)
@@ -76,7 +81,12 @@ def get_mvp_service() -> JobApplicationService:
 
 @lru_cache(maxsize=8)
 def _default_mvp_service(
-    database_path: str, provider_mode: str, max_runtime_minutes: int
+    database_path: str,
+    provider_mode: str,
+    max_runtime_minutes: int,
+    simulated_provisioning_seconds: float = 6.0,
+    simulated_training_seconds: float = 8.0,
+    poll_interval_seconds: float = 2.0,
 ) -> JobApplicationService:
     """Keep the Fake provider and background runner coherent across requests.
 
@@ -86,7 +96,10 @@ def _default_mvp_service(
 
     repository = SQLiteMvpRepository(database_path)
     credentials = SessionCredentialStore()
-    simulated = SimulatedRunpodLifecycleProvider()
+    simulated = SimulatedRunpodLifecycleProvider(
+        provisioning_seconds=simulated_provisioning_seconds,
+        training_seconds=simulated_training_seconds,
+    )
     real_available = real_execution_available(provider_mode)
     callback_base_url = os.getenv("BACKEND_PUBLIC_BASE_URL", "")
 
@@ -112,14 +125,29 @@ def _default_mvp_service(
         max_runtime_minutes,
         database_path,
     )
-    runner = BackgroundJobRunner(JobLifecycleWorker(repository, provider_for))
-    return JobApplicationService(
+    runner = BackgroundJobRunner(
+        JobLifecycleWorker(repository, provider_for), poll_interval_seconds=poll_interval_seconds
+    )
+    service = JobApplicationService(
         repository,
         runner=runner,
         max_runtime_minutes=max_runtime_minutes,
         real_execution_available=real_available,
         credentials=credentials,
     )
+
+    # 시뮬레이터에는 학습 컨테이너가 없다. 그 컨테이너가 보낼 완료 신호를
+    # 여기서 대신 보낸다. 없으면 작업이 실행 중 상태로 상한까지 남는다.
+    def report_simulated_completion(job_id: str) -> None:
+        service.record_completion(
+            job_id=job_id,
+            outcome="SUCCEEDED",
+            exit_code=0,
+            message="Training completed. 200/200 steps.",
+        )
+
+    simulated.report_completion = report_simulated_completion
+    return service
 
 
 @router.post("/session", status_code=201)

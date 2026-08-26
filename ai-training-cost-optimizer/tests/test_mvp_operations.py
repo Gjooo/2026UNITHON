@@ -314,17 +314,68 @@ def test_startup_succeeds_in_the_default_fake_mode(monkeypatch, tmp_path):
         assert client.get("/health").status_code == 200
 
 
-def test_simulated_provider_starts_after_a_delay_and_terminates_on_request():
+def test_simulated_provider_reproduces_the_whole_run():
+    """시연은 사용자 여정을 보여주는 것이 목적이라 종료까지 스스로 간다."""
+
     now = [0.0]
-    provider = SimulatedRunpodLifecycleProvider(provisioning_seconds=10, clock=lambda: now[0])
+    completed = []
+    provider = SimulatedRunpodLifecycleProvider(
+        provisioning_seconds=10,
+        training_seconds=8,
+        termination_seconds=3,
+        clock=lambda: now[0],
+        report_completion=completed.append,
+    )
     pod_id = provider.create_pod(GPU_EXECUTION_PROFILES[0], "job-123")
 
     assert provider.get_pod_status(pod_id) is PodStatus.PROVISIONING
     now[0] = 10.0
     assert provider.get_pod_status(pod_id) is PodStatus.RUNNING
 
+    # 삭제 요청 즉시 사라지지 않는다. 실제 Pod 도 내려가는 데 시간이 걸리고,
+    # 그 구간이 있어야 화면이 "자원을 정리하는 중"을 보여줄 수 있다.
     provider.delete_pod(pod_id)
+    assert provider.get_pod_status(pod_id) is PodStatus.RUNNING
+    now[0] = 13.0
     assert provider.get_pod_status(pod_id) is PodStatus.TERMINATED
+
+
+def test_simulated_training_reports_its_own_completion():
+    """학습 컨테이너가 없으므로 완료 신호도 시뮬레이터가 대신 보낸다."""
+
+    import time as real_time
+
+    completed = []
+    provider = SimulatedRunpodLifecycleProvider(
+        provisioning_seconds=0.05,
+        training_seconds=0.05,
+        report_completion=completed.append,
+    )
+    provider.create_pod(GPU_EXECUTION_PROFILES[0], "job-abc")
+
+    deadline = real_time.monotonic() + 3
+    while not completed and real_time.monotonic() < deadline:
+        real_time.sleep(0.02)
+
+    assert completed == ["job-abc"]
+
+
+def test_a_cancelled_simulated_run_never_reports_completion():
+    """중단된 작업에는 완료를 알리지 않는다. 실제 컨테이너도 삭제되면 못 보낸다."""
+
+    import time as real_time
+
+    completed = []
+    provider = SimulatedRunpodLifecycleProvider(
+        provisioning_seconds=0.05,
+        training_seconds=0.3,
+        report_completion=completed.append,
+    )
+    pod_id = provider.create_pod(GPU_EXECUTION_PROFILES[0], "job-abc")
+    provider.delete_pod(pod_id)
+
+    real_time.sleep(0.6)
+    assert completed == []
 
 
 def test_fake_provider_mode_never_reaches_the_runpod_client(tmp_path, monkeypatch):
