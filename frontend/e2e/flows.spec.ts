@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 
 async function requestPlan(page: Page, budget: string, priority: RegExp) {
   await page.goto('/')
+  await page.getByRole('button', { name: '시작하기' }).first().click()
   await expect(page.getByText('익명 세션')).toBeVisible()
   await page.getByLabel('최대 예산').fill(budget)
   await page.getByRole('radio', { name: priority }).check()
@@ -130,6 +131,7 @@ test('e2e_failed_execution_shows_safe_cause_behind_a_disclosure', async ({ page,
 
 test('e2e_completes_the_contract_with_keyboard_only', async ({ page }) => {
   await page.goto('/')
+  await page.getByRole('button', { name: '시작하기' }).first().click()
   await expect(page.getByText('익명 세션')).toBeVisible()
 
   // 예산 입력까지 Tab으로 닿는다.

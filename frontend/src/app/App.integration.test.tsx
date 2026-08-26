@@ -3,7 +3,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw/server'
-import { renderApp } from '@/test/renderApp'
+import { enterService, renderApp } from '@/test/renderApp'
 import sessionFixture from '@/test/fixtures/session.json'
 
 describe('App bootstrap', () => {
@@ -24,8 +24,9 @@ describe('App bootstrap', () => {
     )
 
     renderApp()
+    await enterService(user)
 
-    const submit = screen.getByRole('button', { name: 'Agent에게 실행안 요청' })
+    const submit = await screen.findByRole('button', { name: 'Agent에게 실행안 요청' })
     expect(submit).toBeDisabled()
 
     await user.type(screen.getByLabelText('최대 예산'), '10000')
@@ -41,20 +42,26 @@ describe('App bootstrap', () => {
   })
 
   it('announces_the_anonymous_session_in_the_app_shell', async () => {
+    const user = userEvent.setup()
     renderApp()
+    await enterService(user)
 
     expect(screen.getByRole('banner')).toHaveTextContent('UNWORK')
-    expect(screen.getByText('세션 준비 중')).toBeInTheDocument()
     expect(await screen.findByText('익명 세션')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /로그인/ })).not.toBeInTheDocument()
   })
 
   it('never_labels_the_product_stage_or_run_type', async () => {
+    const user = userEvent.setup()
     renderApp()
-    await screen.findByText('익명 세션')
 
     // 제품 단계·실행 성격 라벨은 사용자가 부딪히는 제약을 설명하지 못한다.
-    // 제약은 라벨이 아니라 그 자리의 문장으로 밝힌다.
-    expect(document.body.textContent).not.toMatch(/MVP|데모|프로토타입|beta|Beta/)
+    // 제약은 라벨이 아니라 그 자리의 문장으로 밝힌다. 랜딩에도 적용된다.
+    const forbidden = /MVP|데모|프로토타입|beta|Beta/
+    expect(document.body.textContent).not.toMatch(forbidden)
+
+    await enterService(user)
+    await screen.findByText('익명 세션')
+    expect(document.body.textContent).not.toMatch(forbidden)
   })
 })

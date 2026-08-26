@@ -3,7 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw/server'
-import { renderApp } from '@/test/renderApp'
+import { enterService, renderApp } from '@/test/renderApp'
 import balanced from '@/test/fixtures/jobs/draft-balanced.json'
 import overBudget from '@/test/fixtures/jobs/draft-over-budget.json'
 import noEligiblePlan from '@/test/fixtures/errors/no-eligible-plan.json'
@@ -13,6 +13,7 @@ async function submitConstraints(
   budget: string,
   priority: RegExp,
 ) {
+  await enterService(user)
   await screen.findByText('익명 세션')
   await user.type(screen.getByLabelText('최대 예산'), budget)
   await user.click(screen.getByRole('radio', { name: priority }))

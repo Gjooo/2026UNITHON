@@ -1,0 +1,385 @@
+.page {
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+.nav {
+  align-items: center;
+  border-bottom: 1px solid var(--hairline-cool);
+  display: flex;
+  gap: var(--space-lg);
+  margin: 0 auto;
+  max-width: 1280px;
+  padding: var(--space-lg) var(--space-xl);
+}
+
+.wordmark {
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+}
+
+.navSpacer {
+  flex: 1;
+}
+
+.section {
+  margin: 0 auto;
+  max-width: 1280px;
+  padding: 96px var(--space-xl);
+}
+
+.sectionTight {
+  padding-top: 0;
+}
+
+.band {
+  background: var(--canvas-soft);
+  border-block: 1px solid var(--hairline-cool);
+}
+
+.hero {
+  display: grid;
+  gap: var(--space-huge);
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  align-items: center;
+}
+
+.display {
+  font-size: 64px;
+  font-weight: 500;
+  letter-spacing: -1.92px;
+  line-height: 1.1;
+}
+
+.lead {
+  color: var(--ink-mute);
+  font-size: 18px;
+  line-height: 1.55;
+  margin-top: var(--space-xl);
+  max-width: 46ch;
+}
+
+.heroActions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-lg);
+  margin-top: var(--space-xxl);
+}
+
+.heroNote {
+  color: var(--ink-mute);
+  font-size: 13px;
+}
+
+.sectionTitle {
+  font-size: 36px;
+  font-weight: 500;
+  letter-spacing: -0.72px;
+  line-height: 1.15;
+}
+
+.sectionLead {
+  color: var(--ink-mute);
+  line-height: 1.55;
+  margin-top: var(--space-lg);
+  max-width: 60ch;
+}
+
+.grid3 {
+  display: grid;
+  gap: var(--space-xl);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: var(--space-xxl);
+}
+
+.grid4 {
+  display: grid;
+  gap: var(--space-xl);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: var(--space-xxl);
+}
+
+.card {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xxl);
+}
+
+.cardTitle {
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.cardBody {
+  color: var(--ink-mute);
+  line-height: 1.55;
+  margin-top: var(--space-md);
+}
+
+.stepIndex {
+  color: var(--ink-mute-2);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.roles {
+  border-collapse: collapse;
+  margin-top: var(--space-xxl);
+  width: 100%;
+}
+
+.roles th,
+.roles td {
+  border-bottom: 1px solid var(--hairline-cool);
+  padding: var(--space-lg) var(--space-md);
+  text-align: left;
+  vertical-align: top;
+}
+
+.roles thead th {
+  color: var(--ink-mute);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.roles tbody th {
+  font-weight: 500;
+  width: 50%;
+}
+
+.roles tbody td {
+  color: var(--ink-mute);
+}
+
+.priceCard {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  display: grid;
+  gap: var(--space-xl);
+  margin-top: var(--space-xxl);
+  max-width: 640px;
+  padding: var(--space-xxl);
+}
+
+.priceLines {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.priceLine {
+  align-items: baseline;
+  border-bottom: 1px solid var(--hairline-cool);
+  display: flex;
+  gap: var(--space-lg);
+  justify-content: space-between;
+  padding-bottom: var(--space-md);
+}
+
+.priceLineTotal {
+  border-bottom: 0;
+  font-size: 22px;
+  font-weight: 500;
+  padding-bottom: 0;
+}
+
+.priceLabel {
+  color: var(--ink-mute);
+}
+
+.priceValue {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.fine {
+  color: var(--ink-mute);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+/* 제품 화면이 이 브랜드의 논거다. 장식 대신 실제 화면 구조를 보여 준다. */
+.mockup {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.mockupBar {
+  align-items: center;
+  background: var(--canvas-soft);
+  border-bottom: 1px solid var(--hairline-cool);
+  display: flex;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
+}
+
+.mockupDot {
+  background: var(--hairline-strong);
+  border-radius: var(--radius-full);
+  height: 8px;
+  width: 8px;
+}
+
+.mockupBody {
+  display: grid;
+  gap: var(--space-lg);
+  padding: var(--space-xl);
+}
+
+.mockupHead {
+  align-items: center;
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.mockupLabel {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.mockupBadge {
+  background: var(--primary);
+  border-radius: var(--radius-full);
+  color: var(--on-primary);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+}
+
+.mockupGpu {
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.42px;
+}
+
+.mockupProvider {
+  color: var(--ink-mute);
+  font-size: 13px;
+}
+
+.mockupFigures {
+  display: flex;
+  gap: var(--space-huge);
+}
+
+.mockupFigures dt {
+  color: var(--ink-mute);
+  font-size: 12px;
+}
+
+.mockupFigures dd {
+  font-size: 18px;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.mockupTable {
+  border-collapse: collapse;
+  font-size: 13px;
+  width: 100%;
+}
+
+.mockupTable th,
+.mockupTable td {
+  border-top: 1px solid var(--hairline-cool);
+  padding: var(--space-sm) 0;
+  text-align: left;
+}
+
+.mockupTable thead th {
+  border-top: 0;
+  color: var(--ink-mute);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.numeric {
+  text-align: right;
+}
+
+.ok {
+  color: var(--status-ok);
+}
+
+.footer {
+  border-top: 1px solid var(--hairline-cool);
+  color: var(--ink-mute);
+  font-size: 13px;
+  margin: 0 auto;
+  max-width: 1280px;
+  padding: var(--space-huge) var(--space-xl);
+}
+
+@media (max-width: 1023px) {
+  .hero {
+    gap: var(--space-xxl);
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .display {
+    font-size: 48px;
+    letter-spacing: -1.44px;
+  }
+
+  .grid3,
+  .grid4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .section {
+    padding: var(--space-huge) var(--space-lg);
+  }
+
+  .nav,
+  .footer {
+    padding-inline: var(--space-lg);
+  }
+
+  .display {
+    font-size: 36px;
+    letter-spacing: -0.72px;
+  }
+
+  .sectionTitle {
+    font-size: 28px;
+    letter-spacing: -0.42px;
+  }
+
+  .grid3,
+  .grid4 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .card,
+  .priceCard {
+    padding: var(--space-xl);
+  }
+
+  .mockupFigures {
+    gap: var(--space-xl);
+  }
+
+  .roles thead {
+    display: none;
+  }
+
+  .roles tbody th,
+  .roles tbody td {
+    display: block;
+    width: auto;
+  }
+
+  .roles tbody th {
+    border-bottom: 0;
+    padding-bottom: var(--space-xs);
+  }
+}

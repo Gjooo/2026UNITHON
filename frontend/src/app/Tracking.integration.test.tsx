@@ -3,7 +3,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw/server'
-import { renderApp } from '@/test/renderApp'
+import { enterService, renderApp } from '@/test/renderApp'
 import type { TrainingJob } from '@/api/jobs'
 import balanced from '@/test/fixtures/jobs/draft-balanced.json'
 import startAccepted from '@/test/fixtures/jobs/start-accepted.json'
@@ -59,6 +59,7 @@ async function tick(ms: number) {
 
 async function reachTracking(user: User) {
   renderApp()
+  await enterService(user)
   await screen.findByText('익명 세션')
   await user.type(screen.getByLabelText('최대 예산'), '10000')
   await user.click(screen.getByRole('radio', { name: /균형/ }))

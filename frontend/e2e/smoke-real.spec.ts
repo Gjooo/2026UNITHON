@@ -17,6 +17,7 @@ test('smoke_real_execution_reaches_confirmed_teardown', async ({ page }) => {
   test.setTimeout(25 * 60 * 1000)
 
   await page.goto('/')
+  await page.getByRole('button', { name: '시작하기' }).first().click()
   await expect(page.getByText('익명 세션')).toBeVisible()
 
   await page.getByLabel('최대 예산').fill('10000')

@@ -14,6 +14,7 @@ async function noHorizontalOverflow(page: Page) {
 
 async function requestPlan(page: Page) {
   await page.goto('/')
+  await page.getByRole('button', { name: '시작하기' }).first().click()
   await expect(page.getByText('익명 세션')).toBeVisible()
   await page.getByLabel('최대 예산').fill('10000')
   await page.getByRole('radio', { name: /균형/ }).check()
@@ -21,8 +22,16 @@ async function requestPlan(page: Page) {
   await expect(page.getByRole('region', { name: 'Agent 추천 실행안' })).toBeVisible()
 }
 
+test('00_landing', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  await noHorizontalOverflow(page)
+  await expect(page).toHaveScreenshot('00-landing.png', { fullPage: true })
+})
+
 test('01_constraint_form', async ({ page }) => {
   await page.goto('/')
+  await page.getByRole('button', { name: '시작하기' }).first().click()
   await expect(page.getByText('익명 세션')).toBeVisible()
   await noHorizontalOverflow(page)
   await expect(page).toHaveScreenshot('01-constraint-form.png', { fullPage: true })

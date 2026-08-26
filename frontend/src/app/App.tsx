@@ -3,6 +3,7 @@ import { ApiError } from '@/api/errors'
 import { useSession } from '@/hooks/useSession'
 import { useCreateJob } from '@/hooks/useCreateJob'
 import { isTerminal, useCancelJob, useJob, useStartJob } from '@/hooks/useJob'
+import { Landing } from '@/features/landing/Landing'
 import { ConstraintForm } from '@/features/training/ConstraintForm'
 import { ExecutionPlanReview } from '@/features/training/ExecutionPlanReview'
 import { ApprovalPanel } from '@/features/training/ApprovalPanel'
@@ -34,9 +35,11 @@ function SessionStatus() {
 }
 
 export function App() {
-  const session = useSession()
   const [jobId, setJobId] = useState<string | null>(() => readActiveJobId())
+  // 새로고침한 사용자를 소개 화면으로 되돌리지 않는다.
+  const [entered, setEntered] = useState(() => readActiveJobId() !== null)
   const [recoveryNotice, setRecoveryNotice] = useState<string | null>(null)
+  const session = useSession(entered)
 
   const createJob = useCreateJob((created) => {
     setRecoveryNotice(null)
@@ -66,6 +69,10 @@ export function App() {
     clearActiveJobId()
     setRecoveryNotice(null)
     setJobId(null)
+  }
+
+  if (!entered) {
+    return <Landing onStart={() => setEntered(true)} />
   }
 
   if (job && isTerminal(job.status)) {
