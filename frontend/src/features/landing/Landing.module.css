@@ -530,3 +530,99 @@
     padding-bottom: var(--space-xs);
   }
 }
+
+.plans {
+  display: grid;
+  gap: var(--space-xl);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: var(--space-xxl);
+}
+
+.plan {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  display: grid;
+  gap: var(--space-md);
+  padding: var(--space-xxl);
+}
+
+/* DESIGN.md: 강조 tier는 초록이 아니라 반전 다크다. 초록은 CTA에만 쓴다. */
+.planFeatured {
+  background: var(--canvas-night);
+  border-color: var(--canvas-night);
+  color: var(--on-dark);
+}
+
+.planName {
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.planFor {
+  color: var(--ink-mute);
+  font-size: 13px;
+}
+
+.planFeatured .planFor {
+  color: var(--ink-faint);
+}
+
+.planBilling {
+  border-block: 1px solid var(--hairline-cool);
+  font-size: 14px;
+  font-weight: 500;
+  padding: var(--space-md) 0;
+}
+
+.planFeatured .planBilling {
+  border-color: var(--canvas-night-soft);
+}
+
+.planValue {
+  color: var(--ink-mute);
+  line-height: 1.55;
+}
+
+.planFeatured .planValue {
+  color: var(--ink-faint);
+}
+
+.splitNote {
+  align-items: center;
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  display: grid;
+  gap: var(--space-xl);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  margin-top: var(--space-xxl);
+  padding: var(--space-xl) var(--space-xxl);
+}
+
+.splitItem {
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.splitLabel {
+  color: var(--ink-mute);
+  font-size: 13px;
+}
+
+.splitTo {
+  font-weight: 500;
+}
+
+@media (max-width: 1023px) {
+  .plans {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .splitNote {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

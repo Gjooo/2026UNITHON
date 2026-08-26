@@ -65,30 +65,21 @@ describe('랜딩', () => {
     expect(screen.queryAllByRole('button', { name: '시작하기' })).toHaveLength(0)
   })
 
-  it('shows_that_gpu_cost_is_paid_directly_to_the_provider', async () => {
+  it('introduces_the_monthly_plans_without_unverified_prices', async () => {
     renderApp()
 
     const pricing = await screen.findByRole('region', { name: '요금' })
 
-    // GPU를 재판매하지 않는다는 것이 이 BM의 뼈대다.
-    expect(within(pricing).getByText('GPU 사용료')).toBeInTheDocument()
-    expect(within(pricing).getByText('SaaS 이용료')).toBeInTheDocument()
-    expect(within(pricing).getByText('GPU Provider')).toBeInTheDocument()
-
-    // 요금제는 있지만 검증 전 가격 숫자는 걸지 않는다.
     expect(within(pricing).getByText('Free')).toBeInTheDocument()
     expect(within(pricing).getByText('Pro')).toBeInTheDocument()
     expect(within(pricing).getByText('Lab')).toBeInTheDocument()
-    expect(pricing.textContent).not.toMatch(/원|₩/)
-  })
 
-  it('explains_why_it_does_not_take_a_cut_of_gpu_spend', async () => {
-    renderApp()
+    // 비용이 어디로 가는지는 밝히되, 배제한 대안과 비교하지 않는다.
+    expect(within(pricing).getByText('GPU 사용료')).toBeInTheDocument()
+    expect(within(pricing).getByText('Guupy 이용료')).toBeInTheDocument()
 
-    const basis = await screen.findByRole('region', { name: '과금 기준' })
-    // 비용을 줄여 주는 것이 가치인데 사용액에 비례해 벌면 인센티브가 충돌한다.
-    expect(basis.textContent).toMatch(/GPU 사용액/)
-    expect(within(basis).getByText(/관리한 Training Job과 팀 운영/)).toBeInTheDocument()
+    // 지불의향 검증 전이라 가격 숫자를 걸지 않는다.
+    expect(pricing.textContent).not.toMatch(/[\d,]+\s*원|₩\s*[\d,]+/)
   })
 
   it('states_who_decides_what', async () => {
