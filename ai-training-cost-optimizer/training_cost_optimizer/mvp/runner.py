@@ -47,15 +47,21 @@ class JobLifecycleWorker:
         clock: Callable[[], datetime] = utc_now,
     ) -> None:
         self.repository = repository
-        # 작업마다 실행 모드가 다를 수 있다. 하나만 주면 모든 모드가 그것을 쓴다.
-        self.providers: dict[ExecutionMode, RunpodLifecycleProvider] = (
-            dict(provider) if isinstance(provider, dict)
-            else {mode: provider for mode in ExecutionMode}
-        )
+        # 작업마다 실행 모드와 자격증명이 다를 수 있다. 함수를 주면 작업별로
+        # 해석하고, dict 나 provider 하나를 주면 그대로 쓴다.
+        if isinstance(provider, dict):
+            self.providers = dict(provider)
+            self._resolve = lambda job: self.providers[job.execution_mode]
+        elif hasattr(provider, "create_pod"):
+            self.providers = {mode: provider for mode in ExecutionMode}
+            self._resolve = lambda job: provider
+        else:
+            self.providers = {}
+            self._resolve = provider
         self.clock = clock
 
     def provider_for(self, job) -> RunpodLifecycleProvider:
-        return self.providers[job.execution_mode]
+        return self._resolve(job)
 
     def run_once(self, job_id: str) -> MvpJobStatus:
         job = self.repository.get_job(job_id)
@@ -63,7 +69,20 @@ class JobLifecycleWorker:
             return MvpJobStatus.FAILED
 
         now = self.clock()
-        provider = self.provider_for(job)
+        try:
+            provider = self.provider_for(job)
+        except Exception as exc:  # noqa: BLE001 - 연결이 사라진 경우
+            logger.error("job=%s provider를 준비할 수 없습니다: %s", job.id, exc)
+            if job.runpod_pod_id is None and job.status is MvpJobStatus.PROVISIONING:
+                return self.repository.fail_before_pod(
+                    job_id=job.id,
+                    failure_message="실행에 필요한 연결이 끊겼습니다.",
+                    finished_at=now,
+                ).status
+            self.repository.record_termination_error(
+                job_id=job.id, failure_message="연결이 끊겨 자원 종료를 확인할 수 없습니다."
+            )
+            return job.status
         if (
             job.status in {MvpJobStatus.PROVISIONING, MvpJobStatus.RUNNING}
             and job.started_at is not None

@@ -287,12 +287,23 @@ def test_smoke_run_reports_a_create_failure_without_leaking_details(monkeypatch)
 
 
 def test_startup_fails_fast_when_runpod_mode_is_misconfigured(monkeypatch):
+    """실제 실행 배포에는 공개 callback 주소가 반드시 있어야 한다.
+
+    실행에 쓰는 키는 사용자가 연결하므로 서버 키는 요구하지 않는다.
+    """
+
     monkeypatch.setenv("MVP_PROVIDER_MODE", "runpod")
-    monkeypatch.delenv("RUNPOD_API_KEY", raising=False)
+    monkeypatch.delenv("BACKEND_PUBLIC_BASE_URL", raising=False)
 
     with pytest.raises(RunpodLifecycleError):
         with TestClient(app):
             pass
+
+    # 팀 키가 없어도 callback 주소만 있으면 기동한다.
+    monkeypatch.setenv("BACKEND_PUBLIC_BASE_URL", "https://api.example.test")
+    monkeypatch.delenv("RUNPOD_API_KEY", raising=False)
+    with TestClient(app) as client:
+        assert client.get("/health").status_code == 200
 
 
 def test_startup_succeeds_in_the_default_fake_mode(monkeypatch, tmp_path):
@@ -538,12 +549,18 @@ def test_execution_mode_is_chosen_per_job(tmp_path):
         repository, {ExecutionMode.SIMULATED: simulated, ExecutionMode.REAL: real}
     )
     service = JobApplicationService(
-        repository, runner=FakeJobRunner(), real_execution_available=True
+        repository,
+        runner=FakeJobRunner(),
+        real_execution_available=True,
+        verify_credential=lambda key: True,
     )
     app.dependency_overrides[get_mvp_service] = lambda: service
     try:
         client = TestClient(app, base_url="https://testserver")
         assert client.post("/api/v1/session").json()["realExecutionAvailable"] is True
+        assert client.post(
+            "/api/v1/providers/runpod/credential", json={"apiKey": "rpa_valid"}
+        ).status_code == 204
 
         job = client.post(
             "/api/v1/jobs",
@@ -596,5 +613,124 @@ def test_real_execution_is_refused_where_runpod_is_not_configured(tmp_path):
         assert response.status_code == 409
         assert response.json()["error"]["code"] == "REAL_EXECUTION_UNAVAILABLE"
         assert service.repository.count_jobs() == 0
+    finally:
+        app.dependency_overrides.clear()
+
+
+def _byok_service(tmp_path, *, valid=True, **kwargs):
+    return JobApplicationService(
+        SQLiteMvpRepository(tmp_path / "mvp.sqlite3"),
+        runner=FakeJobRunner(),
+        real_execution_available=True,
+        verify_credential=(lambda key: valid),
+        **kwargs,
+    )
+
+
+def test_a_key_is_verified_against_runpod_before_it_is_accepted(tmp_path):
+    """형식만 보고 저장하면 사용자는 승인 버튼을 누른 뒤에야 키가 틀린 걸 안다."""
+
+    service = _byok_service(tmp_path, valid=False)
+    app.dependency_overrides[get_mvp_service] = lambda: service
+    try:
+        client = TestClient(app, base_url="https://testserver")
+        client.post("/api/v1/session")
+
+        rejected = client.post(
+            "/api/v1/providers/runpod/credential", json={"apiKey": "rpa_wrong"}
+        )
+        assert rejected.status_code == 401
+        assert rejected.json()["error"]["code"] == "INVALID_PROVIDER_CREDENTIAL"
+        assert client.get("/api/v1/providers").json()["providers"][0][
+            "connectionStatus"
+        ] == "NOT_CONNECTED"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_a_connected_key_is_never_returned(tmp_path):
+    service = _byok_service(tmp_path)
+    app.dependency_overrides[get_mvp_service] = lambda: service
+    try:
+        client = TestClient(app, base_url="https://testserver")
+        client.post("/api/v1/session")
+        secret = "rpa_super_secret_value"
+        assert client.post(
+            "/api/v1/providers/runpod/credential", json={"apiKey": secret}
+        ).status_code == 204
+
+        listed = client.get("/api/v1/providers")
+        assert secret not in listed.text
+        provider = listed.json()["providers"][0]
+        assert provider["connectionStatus"] == "CONNECTED"
+        assert provider["connectedAt"].endswith("Z")
+
+        # 연결을 끊으면 즉시 사라진다.
+        assert client.delete("/api/v1/providers/runpod/credential").status_code == 204
+        assert client.get("/api/v1/providers").json()["providers"][0][
+            "connectionStatus"
+        ] == "NOT_CONNECTED"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_real_execution_needs_a_connected_key_and_never_falls_back(tmp_path):
+    """팀 키로 대신 실행하지 않는다. 화면이 '당신의 계정'이라 말하면 사실이어야 한다."""
+
+    service = _byok_service(tmp_path)
+    app.dependency_overrides[get_mvp_service] = lambda: service
+    try:
+        client = TestClient(app, base_url="https://testserver")
+        client.post("/api/v1/session")
+        job = client.post(
+            "/api/v1/jobs",
+            json={"maxBudgetKrw": 1_000, "priority": "CHEAPEST", "executionMode": "REAL"},
+        ).json()
+
+        refused = client.post(f"/api/v1/jobs/{job['id']}/start")
+        assert refused.status_code == 409
+        assert refused.json()["error"]["code"] == "PROVIDER_NOT_CONNECTED"
+        assert service.repository.get_job(job["id"]).status.value == "DRAFT"
+
+        client.post("/api/v1/providers/runpod/credential", json={"apiKey": "rpa_valid"})
+        assert client.post(f"/api/v1/jobs/{job['id']}/start").status_code == 202
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_the_simulator_never_needs_a_key(tmp_path):
+    service = _byok_service(tmp_path)
+    app.dependency_overrides[get_mvp_service] = lambda: service
+    try:
+        client = TestClient(app, base_url="https://testserver")
+        client.post("/api/v1/session")
+        job = client.post(
+            "/api/v1/jobs", json={"maxBudgetKrw": 1_000, "priority": "CHEAPEST"}
+        ).json()
+        assert client.post(f"/api/v1/jobs/{job['id']}/start").status_code == 202
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_one_session_cannot_use_another_sessions_key(tmp_path):
+    service = _byok_service(tmp_path)
+    app.dependency_overrides[get_mvp_service] = lambda: service
+    try:
+        owner = TestClient(app, base_url="https://testserver")
+        other = TestClient(app, base_url="https://testserver")
+        owner.post("/api/v1/session")
+        owner.post("/api/v1/providers/runpod/credential", json={"apiKey": "rpa_valid"})
+        other.post("/api/v1/session")
+
+        assert other.get("/api/v1/providers").json()["providers"][0][
+            "connectionStatus"
+        ] == "NOT_CONNECTED"
+        job = other.post(
+            "/api/v1/jobs",
+            json={"maxBudgetKrw": 1_000, "priority": "CHEAPEST", "executionMode": "REAL"},
+        ).json()
+        assert other.post(f"/api/v1/jobs/{job['id']}/start").json()["error"][
+            "code"
+        ] == "PROVIDER_NOT_CONNECTED"
     finally:
         app.dependency_overrides.clear()

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import secrets
 from datetime import timedelta
+from typing import Callable
 from uuid import uuid4
 
 from .config import (
@@ -22,6 +23,7 @@ from .domain import (
     Priority,
     utc_now,
 )
+from .credentials import ProviderConnection, SessionCredentialStore
 from .recommendation import ProfileRecommendationService
 from .repository import SQLiteMvpRepository
 from .runner import FakeJobRunner, JobRunner
@@ -35,6 +37,8 @@ class JobApplicationService:
         runner: JobRunner | None = None,
         max_runtime_minutes: int = WORKLOAD.max_runtime_minutes,
         real_execution_available: bool = False,
+        credentials: SessionCredentialStore | None = None,
+        verify_credential: "Callable[[str], bool] | None" = None,
     ) -> None:
         self.repository = repository
         self.recommendation_service = recommendation_service or ProfileRecommendationService()
@@ -45,6 +49,9 @@ class JobApplicationService:
         # 실제 실행을 고를 수 있는지는 배포 설정이 정한다. 클라이언트가 요청해도
         # Runpod 자격증명이 없는 서버에서는 Pod 를 만들 수 없다.
         self.real_execution_available = real_execution_available
+        self.credentials = credentials or SessionCredentialStore()
+        # 키 유효성은 실제 Provider 호출로 확인한다. 테스트는 이 자리를 대체한다.
+        self._verify_credential = verify_credential
 
     def create_or_refresh_session(self, raw_token: str | None) -> tuple[AnonymousSession, str]:
         now = utc_now()
@@ -129,6 +136,19 @@ class JobApplicationService:
     def start_job(self, *, raw_session_token: str | None, job_id: str) -> MvpJob:
         if not raw_session_token:
             raise MvpServiceError("SESSION_REQUIRED", "익명 세션이 필요합니다.", 401)
+
+        # 실제 실행은 사용자가 연결한 키로만 한다. 팀 키로 대신하지 않는다.
+        # 화면이 "당신의 계정에서 실행됩니다"라고 말하는데 아니면 안 되기 때문이다.
+        session = self.require_session(raw_session_token)
+        pending = self.repository.get_job_for_owner(job_id=job_id, owner_session_id=session.id)
+        if pending is not None and pending.execution_mode is ExecutionMode.REAL:
+            if self.credentials.api_key(session_id=session.id, provider_id="runpod") is None:
+                raise MvpServiceError(
+                    "PROVIDER_NOT_CONNECTED",
+                    "실제 실행을 시작하려면 먼저 Runpod 계정을 연결해 주세요.",
+                    409,
+                )
+
         job = self.repository.approve_start(
             job_id=job_id,
             session_token_hash=self._token_hash(raw_session_token),
@@ -165,6 +185,49 @@ class JobApplicationService:
         )
         self.runner.start(job.id)
         return job
+
+    def connect_provider(
+        self, *, raw_session_token: str | None, provider_id: str, api_key: str
+    ) -> ProviderConnection:
+        """키를 받아 실제로 통하는지 확인한 뒤 세션에 묶는다.
+
+        형식만 보고 저장하면 사용자는 승인 버튼을 누른 뒤에야 키가 틀렸다는 것을
+        알게 된다. 그 시점에는 이미 비용이 발생했다고 믿는 상태다.
+        """
+
+        session = self.require_session(raw_session_token)
+        if provider_id != "runpod":
+            raise MvpServiceError("PROVIDER_NOT_SUPPORTED", "지원하지 않는 공급자입니다.", 404)
+
+        verifier = self._verify_credential
+        if verifier is None:
+            from training_cost_optimizer.providers.runpod_lifecycle import verify_api_key
+
+            verifier = verify_api_key
+        try:
+            valid = verifier(api_key)
+        except Exception as exc:  # noqa: BLE001 - 공급자 장애와 잘못된 키를 구분한다
+            raise MvpServiceError(
+                "PROVIDER_UNAVAILABLE", "지금은 키를 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.", 503
+            ) from exc
+        if not valid:
+            raise MvpServiceError(
+                "INVALID_PROVIDER_CREDENTIAL", "이 키로는 Runpod에 연결할 수 없습니다.", 401
+            )
+
+        return self.credentials.save(
+            session_id=session.id, provider_id=provider_id, api_key=api_key
+        )
+
+    def provider_connection(
+        self, *, raw_session_token: str | None, provider_id: str = "runpod"
+    ) -> ProviderConnection | None:
+        session = self.require_session(raw_session_token)
+        return self.credentials.connection(session_id=session.id, provider_id=provider_id)
+
+    def disconnect_provider(self, *, raw_session_token: str | None, provider_id: str) -> None:
+        session = self.require_session(raw_session_token)
+        self.credentials.discard(session_id=session.id, provider_id=provider_id)
 
     def require_session(self, raw_token: str | None) -> AnonymousSession:
         if not raw_token:

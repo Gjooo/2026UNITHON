@@ -66,6 +66,25 @@ def _transport(
         raise RunpodLifecycleError("Runpod API request failed") from exc
 
 
+def verify_api_key(api_key: str, *, transport: Transport = _transport, timeout: float = 15.0) -> bool:
+    """키가 실제로 Runpod 에서 통하는지 확인한다.
+
+    형식 검사만으로는 부족하다. 승인 뒤 Pod 생성 단계에서 실패하면 사용자는
+    이미 비용이 발생했다고 믿는 상태다. 읽기 전용 호출이라 자원을 만들지 않는다.
+    """
+
+    if not api_key.strip():
+        return False
+    status, _ = transport(
+        "GET", RUNPOD_PODS_URL, None, {"Authorization": f"Bearer {api_key}"}, timeout
+    )
+    if status == 200:
+        return True
+    if status in {401, 403}:
+        return False
+    raise RunpodLifecycleError(f"Runpod key verification failed with HTTP {status}")
+
+
 class RunpodRestLifecycleProvider:
     """Translate only the fixed MVP execution contract to Runpod REST calls."""
 

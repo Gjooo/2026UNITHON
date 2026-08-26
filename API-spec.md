@@ -54,8 +54,52 @@ Response: `201 Created`
 | 404 | `JOB_NOT_FOUND` | Job이 없거나 현재 세션의 Job이 아님 |
 | 409 | `INVALID_JOB_STATE`, `DEMO_BUSY`, `EXECUTION_ALREADY_USED` | 현재 상태에서 실행·취소할 수 없거나 실행 제한에 도달 |
 | 409 | `REAL_EXECUTION_UNAVAILABLE` | 이 배포에서 실제 GPU 실행을 쓸 수 없음 |
+| 409 | `PROVIDER_NOT_CONNECTED` | 실제 실행인데 연결된 공급자 키가 없음 |
+| 401 | `INVALID_PROVIDER_CREDENTIAL` | 입력한 키로 공급자에 연결할 수 없음 |
+| 503 | `PROVIDER_UNAVAILABLE` | 공급자 응답이 없어 키를 확인할 수 없음 |
 | 422 | `NO_ELIGIBLE_PLAN` | 최대 예산 안의 데모 GPU 후보가 없음 |
 | 503 | `RUNPOD_UNAVAILABLE` | Pod 생성 또는 상태 확인 실패 |
+
+## 1-2. 공급자 연결 (BYOK)
+
+실제 GPU 실행은 **사용자가 연결한 Runpod 키**로만 한다. 팀 키로 대신 실행하지 않는다. 화면이 "당신의 계정에서 실행됩니다"라고 말한다면 그것이 사실이어야 하기 때문이다.
+
+시뮬레이터 실행에는 키가 필요 없다. 후보 비교(`POST /jobs`)도 고정 프로필 비교라 키 없이 된다. 비용이 없는 탐색을 막을 이유가 없다.
+
+### `POST /providers/{providerId}/credential`
+
+```json
+{ "apiKey": "..." }
+```
+
+Response: `204 No Content`
+
+처리 규칙:
+
+1. 받은 즉시 Runpod 읽기 API를 한 번 호출해 **키가 실제로 통하는지 확인한다.** 형식 검사만으로는 부족하다. 승인 뒤 Pod 생성 단계에서 실패하면 사용자는 이미 비용이 발생했다고 믿는 상태다.
+2. 유효하면 현재 익명 세션에 묶어 **메모리에만** 보관한다. 디스크에 쓰지 않는다.
+3. 응답 본문은 비어 있다. 키는 마스킹한 형태로도 반환하지 않는다.
+4. 유효하지 않으면 `401 INVALID_PROVIDER_CREDENTIAL`. 공급자 장애로 확인 자체가 안 되면 `503 PROVIDER_UNAVAILABLE`.
+
+프로세스가 재시작되면 연결이 풀린다. 사용자는 다시 입력해야 한다. 남의 키를 볼륨에 평문으로 남기지 않기 위한 선택이다.
+
+### `GET /providers`
+
+현재 세션의 연결 상태만 반환한다.
+
+```json
+{
+  "providers": [
+    { "id": "runpod", "name": "Runpod", "connectionStatus": "CONNECTED", "connectedAt": "2026-08-26T05:10:00Z" }
+  ]
+}
+```
+
+`connectionStatus`: `CONNECTED` 또는 `NOT_CONNECTED`.
+
+### `DELETE /providers/{providerId}/credential`
+
+연결을 끊고 보관 중인 키를 폐기한다. Response: `204 No Content`
 
 ## 2. 핵심 리소스
 
@@ -200,9 +244,10 @@ Response: `202 Accepted`
 처리 규칙:
 
 1. Job은 `DRAFT`여야 한다.
-2. 세션의 `execution_used`가 `false`여야 한다. Pod 생성을 시작하면 `true`로 변경한다.
-3. 서비스 전체에 `PROVISIONING`, `RUNNING`, `TERMINATING` Job이 있으면 `409 DEMO_BUSY`를 반환한다. 대기열은 제공하지 않는다.
-4. 서버는 Job의 추천 프로필에 고정된 Runpod GPU type ID·이미지·실행 명령·최대 10분 설정으로 Pod를 생성한다.
+2. `executionMode`가 `REAL`이면 이 세션에 연결된 공급자 키가 있어야 한다. 없으면 `409 PROVIDER_NOT_CONNECTED`이며, 팀 키로 대신 실행하지 않는다.
+3. 세션의 `execution_used`가 `false`여야 한다. Pod 생성을 시작하면 `true`로 변경한다.
+4. 서비스 전체에 `PROVISIONING`, `RUNNING`, `TERMINATING` Job이 있으면 `409 DEMO_BUSY`를 반환한다. 대기열은 제공하지 않는다.
+5. 서버는 Job의 추천 프로필에 고정된 Runpod GPU type ID·이미지·실행 명령·최대 실행시간 설정으로 Pod를 생성한다. 실제 실행이면 그 사용자가 연결한 키로 만든다.
 
 ### `POST /jobs/{jobId}/cancel`
 

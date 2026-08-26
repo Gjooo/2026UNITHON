@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from functools import lru_cache
 from typing import Literal
 
@@ -19,6 +20,7 @@ from .config import (
     real_execution_available,
 )
 from .domain import ExecutionMode, MvpJob, MvpServiceError, Priority, to_utc_iso
+from .credentials import SessionCredentialStore
 from .repository import SQLiteMvpRepository
 from .runner import BackgroundJobRunner, JobLifecycleWorker
 from .simulated_provider import SimulatedRunpodLifecycleProvider
@@ -43,6 +45,12 @@ class CreateJobRequest(BaseModel):
     execution_mode: ExecutionMode = Field(
         default=ExecutionMode.SIMULATED, alias="executionMode"
     )
+
+
+class ProviderCredentialRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    api_key: str = Field(min_length=1, max_length=200, alias="apiKey")
 
 
 class CompletionRequest(BaseModel):
@@ -77,25 +85,40 @@ def _default_mvp_service(
     """
 
     repository = SQLiteMvpRepository(database_path)
-    # 시뮬레이터는 항상 쓸 수 있다. 실제 실행은 Runpod 설정이 갖춰진 배포에서만.
-    providers = {ExecutionMode.SIMULATED: SimulatedRunpodLifecycleProvider()}
+    credentials = SessionCredentialStore()
+    simulated = SimulatedRunpodLifecycleProvider()
     real_available = real_execution_available(provider_mode)
-    if real_available:
-        providers[ExecutionMode.REAL] = RunpodRestLifecycleProvider.from_environment()
-    else:
-        providers[ExecutionMode.REAL] = providers[ExecutionMode.SIMULATED]
+    callback_base_url = os.getenv("BACKEND_PUBLIC_BASE_URL", "")
+
+    def provider_for(job):
+        """작업의 모드와 소유 세션의 키로 Provider 를 만든다.
+
+        실제 실행에 쓰는 키는 그 작업을 만든 사용자의 것이다. 팀 키로 대신하지
+        않는다. 세션이 연결을 끊었거나 프로세스가 재시작돼 키가 사라지면
+        여기서 실패하고, Worker 가 그 상황을 사용자에게 드러낸다.
+        """
+
+        if job.execution_mode is not ExecutionMode.REAL:
+            return simulated
+        api_key = credentials.api_key(session_id=job.owner_session_id, provider_id="runpod")
+        if not api_key:
+            raise RunpodLifecycleError("연결된 Runpod 자격증명이 없습니다")
+        return RunpodRestLifecycleProvider(
+            api_key=api_key, callback_base_url=callback_base_url
+        )
     logger.info(
         "MVP service ready: provider_mode=%s max_runtime_minutes=%s database=%s",
         provider_mode,
         max_runtime_minutes,
         database_path,
     )
-    runner = BackgroundJobRunner(JobLifecycleWorker(repository, providers))
+    runner = BackgroundJobRunner(JobLifecycleWorker(repository, provider_for))
     return JobApplicationService(
         repository,
         runner=runner,
         max_runtime_minutes=max_runtime_minutes,
         real_execution_available=real_available,
+        credentials=credentials,
     )
 
 
@@ -126,6 +149,50 @@ def create_session(
         # 화면이 "실제 실행" 선택지를 보여줄지 판단하는 값이다.
         "realExecutionAvailable": service.real_execution_available,
     }
+
+
+@router.get("/providers")
+def list_providers(
+    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME),
+    service: JobApplicationService = Depends(get_mvp_service),
+) -> dict:
+    """이 세션의 공급자 연결 상태만 알려준다. 키는 어떤 형태로도 반환하지 않는다."""
+
+    connection = service.provider_connection(raw_session_token=session_token)
+    return {
+        "providers": [
+            {
+                "id": "runpod",
+                "name": "Runpod",
+                "connectionStatus": "CONNECTED" if connection else "NOT_CONNECTED",
+                "connectedAt": to_utc_iso(connection.connected_at) if connection else None,
+            }
+        ]
+    }
+
+
+@router.post("/providers/{provider_id}/credential", status_code=status.HTTP_204_NO_CONTENT)
+def connect_provider(
+    provider_id: str,
+    payload: ProviderCredentialRequest,
+    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME),
+    service: JobApplicationService = Depends(get_mvp_service),
+) -> Response:
+    service.connect_provider(
+        raw_session_token=session_token, provider_id=provider_id, api_key=payload.api_key
+    )
+    # 키는 메모리에만 남기고 응답에는 아무것도 담지 않는다.
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.delete("/providers/{provider_id}/credential", status_code=status.HTTP_204_NO_CONTENT)
+def disconnect_provider(
+    provider_id: str,
+    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME),
+    service: JobApplicationService = Depends(get_mvp_service),
+) -> Response:
+    service.disconnect_provider(raw_session_token=session_token, provider_id=provider_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/jobs", status_code=201)

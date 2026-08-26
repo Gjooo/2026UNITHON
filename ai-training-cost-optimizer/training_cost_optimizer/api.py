@@ -3,6 +3,7 @@
 import logging
 import os
 from contextlib import asynccontextmanager
+from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -12,7 +13,7 @@ from fastapi.responses import JSONResponse
 from .mvp.config import get_settings as get_mvp_settings
 from .mvp.domain import MvpServiceError
 from .mvp.router import router as mvp_router
-from .providers.runpod_lifecycle import RunpodRestLifecycleProvider
+from .providers.runpod_lifecycle import RunpodLifecycleError
 
 from .models import (APIErrorResponse, BudgetSummary, ExecutionPlan, GPU,
     OptimizeAPIResponse, PricingSummary, RecommendationResult,
@@ -58,7 +59,14 @@ async def lifespan(_: FastAPI):
         settings.max_runtime_minutes,
     )
     if settings.provider_mode == "runpod":
-        RunpodRestLifecycleProvider.from_environment()
+        # 실행에 쓰는 키는 사용자가 세션에 연결한다. 서버가 갖춰야 하는 것은
+        # Pod 가 완료를 알릴 공개 주소뿐이다.
+        callback_base_url = os.getenv("BACKEND_PUBLIC_BASE_URL", "")
+        parsed = urlparse(callback_base_url)
+        if parsed.scheme != "https" or not parsed.netloc:
+            raise RunpodLifecycleError(
+                "BACKEND_PUBLIC_BASE_URL must be an absolute HTTPS URL for real execution"
+            )
     yield
 
 
