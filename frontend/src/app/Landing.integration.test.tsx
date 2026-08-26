@@ -5,6 +5,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw/server'
 import { renderApp } from '@/test/renderApp'
 import running from '@/test/fixtures/jobs/running.json'
+import balanced from '@/test/fixtures/jobs/draft-balanced.json'
 import sessionFixture from '@/test/fixtures/session.json'
 
 const ACTIVE_JOB_KEY = 'unwork.activeJobId'
@@ -87,5 +88,37 @@ describe('랜딩', () => {
     const roles = await screen.findByRole('region', { name: '역할' })
     expect(within(roles).getByText(/예산/)).toBeInTheDocument()
     expect(within(roles).getByText(/자원 종료/)).toBeInTheDocument()
+  })
+
+  it('shows_the_landing_again_after_only_comparing_plans', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.post('*/api/v1/jobs', () => HttpResponse.json(balanced, { status: 201 })),
+    )
+
+    renderApp()
+    const [start] = await screen.findAllByRole('button', { name: '시작하기' })
+    await user.click(start)
+    await user.type(await screen.findByLabelText('최대 예산'), '10000')
+    await user.click(screen.getByRole('radio', { name: /균형/ }))
+    await user.click(screen.getByRole('button', { name: 'Agent에게 실행안 요청' }))
+    await screen.findByRole('region', { name: 'Agent 추천 실행안' })
+
+    // 비교만 한 작업은 복구 대상이 아니다. 비용도 없고 다시 만들면 된다.
+    expect(window.localStorage.getItem(ACTIVE_JOB_KEY)).toBeNull()
+  })
+
+  it('returns_to_the_landing_from_the_wordmark', async () => {
+    const user = userEvent.setup()
+    renderApp()
+    const [start] = await screen.findAllByRole('button', { name: '시작하기' })
+    await user.click(start)
+    await screen.findByLabelText('최대 예산')
+
+    await user.click(screen.getByRole('button', { name: 'UNWORK 홈으로' }))
+
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent(
+      'GPU를 다루지 않고 학습을 끝냅니다',
+    )
   })
 })

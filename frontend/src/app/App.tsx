@@ -75,6 +75,13 @@ export function App() {
     setRecoveryNotice(toUserMessage(jobError))
   }, [jobError])
 
+  function goHome() {
+    clearActiveJobId()
+    setRecoveryNotice(null)
+    setJobId(null)
+    setEntered(false)
+  }
+
   function startAnother() {
     clearActiveJobId()
     setRecoveryNotice(null)
@@ -90,6 +97,7 @@ export function App() {
   if (!job && !isConnected) {
     return (
       <Screen
+        onHome={goHome}
         connected={false}
         title="먼저 Runpod 계정을 연결해 주세요"
         lead="Agent는 사용자의 계정에서 GPU를 만들고 정리합니다. 자원도 청구도 계속 사용자의 것입니다."
@@ -107,7 +115,7 @@ export function App() {
 
   if (job && isTerminal(job.status)) {
     return (
-      <Screen title="실행 결과" connected={isConnected}>
+      <Screen onHome={goHome} title="실행 결과" connected={isConnected}>
         <JobResult job={job} canStartAnother={canStart} onStartAnother={startAnother} />
       </Screen>
     )
@@ -115,7 +123,7 @@ export function App() {
 
   if (job && job.status !== 'DRAFT') {
     return (
-      <Screen title="실행 상태" connected={isConnected}>
+      <Screen onHome={goHome} title="실행 상태" connected={isConnected}>
         <Alert error={cancelJob.error} />
         {jobQuery.isError && <p className={styles.connectionNotice}>연결을 다시 확인하는 중</p>}
         <JobTracker
@@ -130,6 +138,7 @@ export function App() {
   if (job) {
     return (
       <Screen
+        onHome={goHome}
         connected={isConnected}
         title="Agent가 실행안을 비교했어요"
         lead="아래 실행 계약은 Agent가 고정한 값입니다. GPU를 직접 바꾸지 않습니다."
@@ -151,6 +160,7 @@ export function App() {
 
   return (
     <Screen
+      onHome={goHome}
       connected={isConnected}
       title="예산과 우선순위만 정하면 됩니다"
       lead="Agent가 검증된 GPU 후보를 비교해 실행안을 추천합니다. GPU 콘솔, SSH, CUDA 설정은 다루지 않습니다."
@@ -199,17 +209,21 @@ function Screen({
   title,
   lead,
   connected = false,
+  onHome,
   children,
 }: {
   title: string
   lead?: string
   connected?: boolean
+  onHome: () => void
   children: ReactNode
 }) {
   return (
     <div className={styles.app}>
       <header className={styles.header}>
-        <span className={styles.wordmark}>UNWORK</span>
+        <button className={styles.wordmark} type="button" onClick={onHome} aria-label="UNWORK 홈으로">
+          UNWORK
+        </button>
         <SessionStatus connected={connected} />
       </header>
       <main className={styles.main}>

@@ -110,3 +110,10 @@
   margin-bottom: var(--space-lg);
   padding: var(--space-md) var(--space-lg);
 }
+
+.wordmark {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+}

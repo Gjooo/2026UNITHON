@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { cancelJob, getJob, startJob, type JobStatus, type TrainingJob } from '@/api/jobs'
+import { writeActiveJobId } from '@/features/training/activeJob'
 
 export const POLL_INTERVAL_MS = 2500
 export const MAX_POLL_INTERVAL_MS = 15_000
@@ -89,7 +90,16 @@ function useJobStatusMutation(request: (jobId: string) => Promise<{ status: JobS
 }
 
 export function useStartJob() {
-  return useJobStatusMutation(startJob)
+  const mutation = useJobStatusMutation(startJob)
+  return {
+    ...mutation,
+    mutateAsync: async (jobId: string) => {
+      const result = await mutation.mutateAsync(jobId)
+      // 실행이 시작된 뒤부터 복구 대상이다. 브라우저를 닫아도 백엔드는 계속 돈다.
+      writeActiveJobId(jobId)
+      return result
+    },
+  }
 }
 
 export function useCancelJob() {
