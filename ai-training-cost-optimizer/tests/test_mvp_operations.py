@@ -474,8 +474,8 @@ def test_a_broken_spec_response_is_reported_not_raised(monkeypatch):
     assert "500" in output.getvalue()
 
 
-def test_session_response_reports_the_remaining_execution_allowance(tmp_path):
-    """허용 횟수는 실제 비용이 발생하는 실행만 센다."""
+def test_a_session_can_run_more_than_once(tmp_path):
+    """시연은 한 기기에서 여러 번 보여주는 일이다. 횟수로 막지 않는다."""
 
     repository = SQLiteMvpRepository(tmp_path / "mvp.sqlite3")
     service = JobApplicationService(
@@ -487,24 +487,15 @@ def test_session_response_reports_the_remaining_execution_allowance(tmp_path):
     app.dependency_overrides[get_mvp_service] = lambda: service
     try:
         client = TestClient(app, base_url="https://testserver")
-        assert client.post("/api/v1/session").json()["executionAllowance"] == {"used": 0, "limit": 1}
-        client.post("/api/v1/providers/runpod/credential", json={"apiKey": "rpa_valid"})
+        session = client.post("/api/v1/session").json()
+        # 더 이상 남은 횟수를 알리지 않는다. 제한이 없기 때문이다.
+        assert "executionAllowance" not in session
 
-        simulated = client.post(
-            "/api/v1/jobs", json={"maxBudgetKrw": 1_000, "priority": "CHEAPEST"}
-        ).json()
-        client.post(f"/api/v1/jobs/{simulated['id']}/start")
-        # 시뮬레이션은 횟수를 쓰지 않는다.
-        assert client.post("/api/v1/session").json()["executionAllowance"]["used"] == 0
-
-        job = client.post(
-            "/api/v1/jobs",
-            json={"maxBudgetKrw": 1_000, "priority": "CHEAPEST", "executionMode": "REAL"},
-        ).json()
-        client.post(f"/api/v1/jobs/{job['id']}/start")
-
-        # 실행을 승인한 뒤에는 화면이 남은 횟수 0을 그대로 안내할 수 있다.
-        assert client.post("/api/v1/session").json()["executionAllowance"] == {"used": 1, "limit": 1}
+        for priority in ("CHEAPEST", "FASTEST", "BALANCED"):
+            job = client.post(
+                "/api/v1/jobs", json={"maxBudgetKrw": 1_000, "priority": priority}
+            ).json()
+            assert client.post(f"/api/v1/jobs/{job['id']}/start").status_code == 202
     finally:
         app.dependency_overrides.clear()
 

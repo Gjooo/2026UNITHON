@@ -97,7 +97,7 @@ def test_job_is_hidden_from_other_session(tmp_path):
 
 
 def test_start_is_atomic_for_session_and_global_limit(tmp_path):
-    """두 제한은 실제로 GPU 를 빌리는 실행에만 적용된다."""
+    """실제 실행은 서비스 전체에 하나만 돈다. 횟수 제한은 두지 않는다."""
 
     repository = SQLiteMvpRepository(tmp_path / "mvp.sqlite3")
     runner = FakeJobRunner()
@@ -114,7 +114,6 @@ def test_start_is_atomic_for_session_and_global_limit(tmp_path):
         assert owner.post("/api/v1/session").status_code == 201
         owner.post("/api/v1/providers/runpod/credential", json={"apiKey": "rpa_valid"})
         first_job = owner.post("/api/v1/jobs", json=real).json()
-        second_job = owner.post("/api/v1/jobs", json={**real, "priority": "FASTEST"}).json()
 
         started = owner.post(f"/api/v1/jobs/{first_job['id']}/start")
         assert started.status_code == 202
@@ -122,9 +121,11 @@ def test_start_is_atomic_for_session_and_global_limit(tmp_path):
         assert repository.get_job(first_job["id"]).status.value == "PROVISIONING"
         assert runner.started_job_ids == [first_job["id"]]
 
-        session_limited = owner.post(f"/api/v1/jobs/{second_job['id']}/start")
-        assert session_limited.status_code == 409
-        assert session_limited.json()["error"]["code"] == "EXECUTION_ALREADY_USED"
+        # 같은 세션이든 다른 세션이든, 실제 실행이 도는 동안에는 하나만 돈다.
+        second_job = owner.post("/api/v1/jobs", json={**real, "priority": "FASTEST"}).json()
+        busy = owner.post(f"/api/v1/jobs/{second_job['id']}/start")
+        assert busy.status_code == 409
+        assert busy.json()["error"]["code"] == "DEMO_BUSY"
 
         assert other.post("/api/v1/session").status_code == 201
         other.post("/api/v1/providers/runpod/credential", json={"apiKey": "rpa_valid"})

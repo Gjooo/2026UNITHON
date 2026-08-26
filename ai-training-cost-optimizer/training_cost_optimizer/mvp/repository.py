@@ -214,14 +214,11 @@ class SQLiteMvpRepository:
                     "INVALID_JOB_STATE", "이미 실행했거나 실행할 수 없는 작업입니다.", 409
                 )
 
-            # 두 제한은 모두 실제로 GPU 를 빌리는 실행을 막기 위한 것이다.
+            # 동시 실행 제한은 실제로 GPU 를 빌리는 실행에만 적용한다.
             # 시뮬레이션은 자원을 만들지 않으므로 몇 번이든, 동시에도 실행한다.
+            # 횟수 제한은 두지 않는다. 시연은 한 기기에서 여러 번 보여주는 일이고,
+            # 실제 실행의 비용은 각자 연결한 본인 계정에서 나간다.
             if job.execution_mode is ExecutionMode.REAL:
-                if session.execution_used:
-                    raise MvpServiceError(
-                        "EXECUTION_ALREADY_USED", "이 세션에서는 이미 실행을 시작했습니다.", 409
-                    )
-
                 active_count = connection.execute(
                     """
                     SELECT COUNT(*) FROM training_jobs
@@ -239,6 +236,7 @@ class SQLiteMvpRepository:
                         "DEMO_BUSY", "다른 실행이 진행 중입니다. 잠시 후 다시 시도해 주세요.", 409
                     )
 
+                # 실행 이력은 남긴다. 더 이상 다음 실행을 막지는 않는다.
                 connection.execute(
                     "UPDATE anonymous_sessions SET execution_used = 1 WHERE id = ?", (session.id,)
                 )

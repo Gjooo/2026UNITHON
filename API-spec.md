@@ -27,12 +27,9 @@ Response: `201 Created`
 ```json
 {
   "expiresAt": "2026-09-01T12:00:00Z",
-  "executionAllowance": { "used": 0, "limit": 1 },
   "realExecutionAvailable": true
 }
 ```
-
-`executionAllowance`는 이 세션이 실제 비용을 발생시킬 수 있는 횟수와 이미 사용한 횟수다. **시뮬레이션 실행은 이 횟수를 쓰지 않는다.** 화면은 실행 버튼을 누르기 전에 남은 횟수를 안내할 수 있다. 운영 정책 값이며 제품 기능이 아니다.
 
 `realExecutionAvailable`은 이 배포에서 실제 GPU 실행을 고를 수 있는지를 뜻한다. `false`면 화면은 실제 실행 선택지를 감춘다. Runpod 자격증명이 없는 배포에서 실제 실행을 요청하면 `409 REAL_EXECUTION_UNAVAILABLE`이다.
 
@@ -52,7 +49,7 @@ Response: `201 Created`
 | 400 | `VALIDATION_ERROR` | 요청 형식 오류 |
 | 401 | `SESSION_REQUIRED`, `SESSION_EXPIRED` | 세션 쿠키 없음 또는 만료 |
 | 404 | `JOB_NOT_FOUND` | Job이 없거나 현재 세션의 Job이 아님 |
-| 409 | `INVALID_JOB_STATE`, `DEMO_BUSY`, `EXECUTION_ALREADY_USED` | 현재 상태에서 실행·취소할 수 없거나 실행 제한에 도달. `DEMO_BUSY`와 `EXECUTION_ALREADY_USED`는 실제 실행에만 적용된다 |
+| 409 | `INVALID_JOB_STATE`, `DEMO_BUSY` | 현재 상태에서 실행·취소할 수 없거나 다른 실제 실행이 진행 중. `DEMO_BUSY`는 실제 실행에만 적용된다 |
 | 409 | `REAL_EXECUTION_UNAVAILABLE` | 이 배포에서 실제 GPU 실행을 쓸 수 없음 |
 | 409 | `PROVIDER_NOT_CONNECTED` | 실제 실행인데 연결된 공급자 키가 없음 |
 | 401 | `INVALID_PROVIDER_CREDENTIAL` | 입력한 키로 공급자에 연결할 수 없음 |
@@ -245,10 +242,9 @@ Response: `202 Accepted`
 
 1. Job은 `DRAFT`여야 한다.
 2. `executionMode`가 `REAL`이면 이 세션에 연결된 공급자 키가 있어야 한다. 없으면 `409 PROVIDER_NOT_CONNECTED`이며, 팀 키로 대신 실행하지 않는다.
-3. **아래 3~4번은 `REAL`에만 적용된다.** 시뮬레이션은 자원을 만들지 않으므로 횟수 제한도 동시 실행 제한도 없다. 같은 사람이 여러 번, 여러 사람이 동시에 실행할 수 있다.
-4. 세션의 `execution_used`가 `false`여야 한다. Pod 생성을 시작하면 `true`로 변경한다.
-5. 서비스 전체에 진행 중인 **실제 실행**이 있으면 `409 DEMO_BUSY`를 반환한다. 대기열은 제공하지 않는다.
-6. 서버는 Job의 추천 프로필에 고정된 Runpod GPU type ID·이미지·실행 명령·최대 실행시간 설정으로 Pod를 생성한다. 실제 실행이면 그 사용자가 연결한 키로 만든다.
+3. 서비스 전체에 진행 중인 **실제 실행**이 있으면 `409 DEMO_BUSY`를 반환한다. 대기열은 제공하지 않는다. 시뮬레이션은 자원을 만들지 않으므로 이 제한을 받지 않는다.
+4. 세션당 실행 횟수 제한은 없다. 같은 브라우저에서 몇 번이든 실행할 수 있다.
+5. 서버는 Job의 추천 프로필에 고정된 Runpod GPU type ID·이미지·실행 명령·최대 실행시간 설정으로 Pod를 생성한다. 실제 실행이면 그 사용자가 연결한 키로 만든다.
 
 ### `POST /jobs/{jobId}/cancel`
 

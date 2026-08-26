@@ -12,7 +12,6 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .config import (
     SESSION_COOKIE_NAME,
-    SESSION_EXECUTION_LIMIT,
     SESSION_TTL_DAYS,
     WORKLOAD,
     MvpConfigError,
@@ -170,10 +169,6 @@ def create_session(
     return {
         "expiresAt": to_utc_iso(session.expires_at),
         # 화면이 실행 버튼을 누르기 전에 남은 횟수를 안내할 수 있게 한다.
-        "executionAllowance": {
-            "used": int(session.execution_used),
-            "limit": SESSION_EXECUTION_LIMIT,
-        },
         # 화면이 "실제 실행" 선택지를 보여줄지 판단하는 값이다.
         "realExecutionAvailable": service.real_execution_available,
     }

@@ -9,7 +9,6 @@ from pathlib import Path
 
 SESSION_COOKIE_NAME = "unwork_session"
 SESSION_TTL_DAYS = 7
-SESSION_EXECUTION_LIMIT = 1
 GOLDEN_PATH_VERSION = "sd15-lora-golden-path-v1"
 SELECTION_POLICY_VERSION = "mvp-gpu-selection-v1"
 PRICE_DATA_TYPE = "DEMO_SNAPSHOT"
