@@ -100,7 +100,9 @@ export function Landing({ onStart }: { onStart: () => void }) {
 
       <div className={styles.band}>
         <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>학습은 코드 문제인데, 일은 운영으로 옵니다</h2>
+          <h2 className={styles.sectionTitle}>
+            우리가 집중해야 할 것은 학습이지, 서버가 아닙니다
+          </h2>
           <p className={styles.sectionLead}>
             Colab의 VRAM과 실행시간 한계를 넘으면 외부 GPU를 써야 합니다. 그 순간부터
             모델 개발과 다른 종류의 일이 따라붙습니다.

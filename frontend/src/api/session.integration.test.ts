@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { createSession } from './session'
 
 describe('createSession', () => {
-  it('returns_remaining_execution_allowance_from_the_server', async () => {
+  it('tells_whether_this_deployment_can_run_real_gpus', async () => {
     const session = await createSession()
 
-    // 실행 버튼을 누르기 전에 남은 횟수를 안내할 수 있어야 한다.
-    expect(session.executionAllowance).toEqual({ used: 0, limit: 1 })
+    expect(session.expiresAt).toBeTruthy()
+    // false면 화면이 실제 실행 선택지를 만들지 않는다.
+    expect(typeof session.realExecutionAvailable).toBe('boolean')
   })
 })

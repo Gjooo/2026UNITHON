@@ -2,13 +2,11 @@ import { useState } from 'react'
 import { Dialog } from '@/components/ui/Dialog'
 import type { TrainingJob } from '@/api/jobs'
 import { formatKrw, formatMinutes } from './format'
-import { EXECUTION_LIMIT_NOTICE } from './messages'
 import { Button } from '@/components/ui/Button'
 import styles from './ApprovalPanel.module.css'
 
 interface ApprovalPanelProps {
   job: TrainingJob
-  canStart: boolean
   isStarting: boolean
   /** 성공·실패 어느 쪽이든 settle될 때까지 기다린다. dialog를 닫을 시점을 알아야 한다. */
   onApprove: () => Promise<unknown>
@@ -17,7 +15,6 @@ interface ApprovalPanelProps {
 
 export function ApprovalPanel({
   job,
-  canStart,
   isStarting,
   onApprove,
   onEditConstraints,
@@ -32,12 +29,10 @@ export function ApprovalPanel({
         고르지 않습니다.
       </p>
 
-      {!canStart && <p className={styles.limitNotice}>{EXECUTION_LIMIT_NOTICE}</p>}
-
       <div className={styles.actions}>
         <Button
           variant="primary"
-          disabled={!canStart || isStarting}
+          disabled={isStarting}
           onClick={() => setDialogOpen(true)}
         >
           실행 승인
@@ -87,7 +82,6 @@ export function ApprovalPanel({
           </dl>
           <ul className={styles.dialogWarnings}>
             <li>예산은 실제 청구액을 제한하지 않습니다. 비교를 위한 추정 기준입니다.</li>
-            <li>{EXECUTION_LIMIT_NOTICE}</li>
           </ul>
         </Dialog>
       )}

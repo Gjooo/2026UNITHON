@@ -100,7 +100,7 @@ const server = http.createServer(async (req, res) => {
       201,
       {
         expiresAt: '2026-09-01T19:47:38Z',
-        executionAllowance: { used: session.executionUsed ? 1 : 0, limit: 1 },
+        realExecutionAvailable: false,
       },
       { 'Set-Cookie': `unwork_session=${session.token}; HttpOnly; Path=/; SameSite=Lax` },
     )

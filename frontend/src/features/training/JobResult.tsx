@@ -1,7 +1,6 @@
 import { useId, useState } from 'react'
 import type { TrainingJob } from '@/api/jobs'
 import { formatElapsed } from './format'
-import { EXECUTION_LIMIT_NOTICE } from './messages'
 import { Button } from '@/components/ui/Button'
 import styles from './JobResult.module.css'
 
@@ -18,11 +17,10 @@ function formatTime(value: string | null): string {
 
 interface JobResultProps {
   job: TrainingJob
-  canStartAnother: boolean
   onStartAnother: () => void
 }
 
-export function JobResult({ job, canStartAnother, onStartAnother }: JobResultProps) {
+export function JobResult({ job, onStartAnother }: JobResultProps) {
   const [detailOpen, setDetailOpen] = useState(false)
   const detailId = useId()
   const succeeded = job.status === 'COMPLETED'
@@ -99,21 +97,9 @@ export function JobResult({ job, canStartAnother, onStartAnother }: JobResultPro
         </>
       )}
 
-      {canStartAnother ? (
-        <Button className={styles.selfStart} variant="primary" onClick={onStartAnother}>
-          새 실행안 만들기
-        </Button>
-      ) : (
-        <>
-          <p className={styles.limitNotice}>
-            {EXECUTION_LIMIT_NOTICE} 비용이 들지 않는 비교는 계속할 수 있습니다.
-          </p>
-          {/* 실행을 다 썼다고 결과 화면에 가둬 두지 않는다. */}
-          <Button className={styles.selfStart} onClick={onStartAnother}>
-            다시 비교
-          </Button>
-        </>
-      )}
+      <Button className={styles.selfStart} variant="primary" onClick={onStartAnother}>
+        새 실행안 만들기
+      </Button>
     </section>
   )
 }
