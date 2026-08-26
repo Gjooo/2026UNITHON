@@ -4,7 +4,7 @@ import { ConstraintForm } from './ConstraintForm'
 
 describe('ConstraintForm', () => {
   it('renders_accessible_empty_constraint_form', () => {
-    render(<ConstraintForm isSessionReady={false} />)
+    render(<ConstraintForm isSessionReady={false} canRunReal={false} />)
 
     const budget = screen.getByLabelText('최대 예산')
     expect(budget).toHaveValue(null)
@@ -36,7 +36,7 @@ describe('ConstraintForm', () => {
   })
 
   it('exposes_no_infrastructure_control_beyond_budget_and_priority', () => {
-    render(<ConstraintForm isSessionReady />)
+    render(<ConstraintForm isSessionReady canRunReal={false} />)
 
     expect(screen.getAllByRole('spinbutton')).toHaveLength(1)
     expect(screen.getAllByRole('radio')).toHaveLength(3)

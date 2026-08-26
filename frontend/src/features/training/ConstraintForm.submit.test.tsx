@@ -7,20 +7,24 @@ describe('ConstraintForm 제출', () => {
   it('submits_budget_and_priority_as_api_values', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
-    render(<ConstraintForm isSessionReady onSubmit={onSubmit} />)
+    render(<ConstraintForm isSessionReady canRunReal={false} onSubmit={onSubmit} />)
 
     await user.type(screen.getByLabelText('최대 예산'), '10000')
     await user.click(screen.getByRole('radio', { name: /균형/ }))
     await user.click(screen.getByRole('button', { name: 'Agent에게 실행안 요청' }))
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
-    expect(onSubmit).toHaveBeenCalledWith({ maxBudgetKrw: 10000, priority: 'BALANCED' })
+    expect(onSubmit).toHaveBeenCalledWith({
+      maxBudgetKrw: 10000,
+      priority: 'BALANCED',
+      executionMode: 'SIMULATED',
+    })
   })
 
   it('blocks_submission_until_budget_and_priority_are_valid', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
-    render(<ConstraintForm isSessionReady onSubmit={onSubmit} />)
+    render(<ConstraintForm isSessionReady canRunReal={false} onSubmit={onSubmit} />)
 
     await user.click(screen.getByRole('button', { name: 'Agent에게 실행안 요청' }))
 

@@ -64,23 +64,20 @@ describe('랜딩', () => {
     expect(screen.queryAllByRole('button', { name: '시작하기' })).toHaveLength(0)
   })
 
-  it('states_only_charges_the_product_actually_makes', async () => {
+  it('explains_the_fee_model_and_that_it_is_not_charged_yet', async () => {
     renderApp()
 
     const pricing = await screen.findByRole('region', { name: '요금' })
 
-    // 실행 경로에는 수수료가 붙지 않는다. 붙는다고 적으면 앱 안의 숫자와 어긋난다.
-    expect(pricing.textContent).not.toMatch(/수수료|15%/)
+    // 수수료 모델은 밝히되, 지금 청구하지 않는다는 것도 같이 말한다.
+    expect(within(pricing).getByText('GPU 사용료의 15%')).toBeInTheDocument()
+    expect(pricing.textContent).toMatch(/현재는 청구하지\s*않습니다/)
+
+    // 앱에 나오는 숫자에 수수료가 없다는 점을 명시한다.
+    expect(pricing.textContent).toMatch(/수수료가 포함돼 있지\s*않습니다/)
+
+    // 지어낸 구독 등급은 만들지 않는다.
     expect(pricing.textContent).not.toMatch(/Free|Pro|Team|무료 체험/)
-
-    // 비용은 사용자가 연결한 계정에서 직접 나간다.
-    expect(within(pricing).getByText(/본인의 Runpod 계정/)).toBeInTheDocument()
-    expect(within(pricing).getByText('₩0')).toBeInTheDocument()
-
-    // 화면에 나오는 숫자는 앱의 실행안 비교와 같은 값이어야 한다.
-    expect(within(pricing).getByText('₩450')).toBeInTheDocument()
-    expect(within(pricing).getByText('₩650')).toBeInTheDocument()
-    expect(within(pricing).getByText('₩900')).toBeInTheDocument()
   })
 
   it('states_who_decides_what', async () => {

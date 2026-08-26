@@ -168,35 +168,33 @@ export function Landing({ onStart }: { onStart: () => void }) {
 
       <div className={styles.band}>
         <section className={styles.section} aria-label="요금">
-          <h2 className={styles.sectionTitle}>중간 마진이 없습니다</h2>
+          <h2 className={styles.sectionTitle}>쓴 만큼만 냅니다</h2>
           <p className={styles.sectionLead}>
-            연결한 본인의 Runpod 계정에서 학습이 실행되고, 비용도 그 계정으로 직접
-            청구됩니다. UNWORK가 GPU 비용을 대신 받거나 그 위에 얹지 않습니다.
+            구독료도 최소 사용료도 없습니다. GPU 사용료는 연결한 본인 Runpod 계정에서
+            사용한 만큼 직접 발생하고, Agent 실행 수수료는 그 위에 얹힙니다. 승인 전에
+            예상 비용을 먼저 보여 드립니다.
           </p>
 
           <div className={styles.priceCard}>
             <div className={styles.priceLines}>
               <div className={styles.priceLine}>
-                <span className={styles.priceLabel}>NVIDIA RTX 4090 · 약 10분</span>
-                <span className={styles.priceValue}>₩450</span>
+                <span className={styles.priceLabel}>GPU 사용료</span>
+                <span className={styles.priceValue}>사용한 만큼</span>
               </div>
               <div className={styles.priceLine}>
-                <span className={styles.priceLabel}>NVIDIA L40S · 약 7분</span>
-                <span className={styles.priceValue}>₩650</span>
-              </div>
-              <div className={styles.priceLine}>
-                <span className={styles.priceLabel}>NVIDIA A100 40GB · 약 5분</span>
-                <span className={styles.priceValue}>₩900</span>
+                <span className={styles.priceLabel}>Agent 실행 수수료</span>
+                <span className={styles.priceValue}>GPU 사용료의 15%</span>
               </div>
               <div className={`${styles.priceLine} ${styles.priceLineTotal}`}>
-                <span>UNWORK 이용료</span>
+                <span>지금 청구되는 금액</span>
                 <span className={styles.priceValue}>₩0</span>
               </div>
             </div>
             <p className={styles.fine}>
-              Stable Diffusion 1.5 LoRA 학습 한 번의 예상 GPU 사용료입니다. 예상 비용은
-              승인 시점의 검증된 실행 프로필 기준 추정치이며 실제 청구액을 보장하지
-              않습니다. 실제 청구는 Runpod이 사용한 시간만큼 합니다.
+              Agent 실행 수수료는 위 요율로 계획하고 있으며 <strong>현재는 청구하지
+              않습니다.</strong> 화면에 표시되는 예상 비용(Stable Diffusion 1.5 LoRA 학습
+              한 번 기준 ₩450–₩900)은 GPU 사용료 추정치이며 수수료가 포함돼 있지
+              않습니다. 실제 청구는 Runpod이 사용한 시간만큼 본인 계정에 합니다.
             </p>
           </div>
         </section>

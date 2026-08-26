@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw/server'
 import { enterService, renderApp } from '@/test/renderApp'
+import sessionRealAvailable from '@/test/fixtures/session-real-available.json'
 import balanced from '@/test/fixtures/jobs/draft-balanced.json'
 import overBudget from '@/test/fixtures/jobs/draft-over-budget.json'
 import noEligiblePlan from '@/test/fixtures/errors/no-eligible-plan.json'
@@ -44,8 +45,10 @@ describe('실행 계약 검토', () => {
     expect(within(recommended).getByText('약 7분')).toBeInTheDocument()
     expect(within(recommended).getByText(plan.reason)).toBeInTheDocument()
 
-    // 사용자가 정하는 값은 두 개뿐이다.
-    expect(bodies).toEqual([{ maxBudgetKrw: 10000, priority: 'BALANCED' }])
+    // GPU·Provider·명령은 요청에 들어가지 않는다. 사용자가 정하는 값만 간다.
+    expect(bodies).toEqual([
+      { maxBudgetKrw: 10000, priority: 'BALANCED', executionMode: 'SIMULATED' },
+    ])
 
     // 내부 식별자는 화면에 노출하지 않는다.
     expect(document.body.textContent).not.toContain(plan.profileId)
@@ -139,5 +142,43 @@ describe('실행 계약 검토', () => {
       expect(screen.getByText(balanced.scenario.executionCommand)).toBeVisible(),
     )
     expect(screen.getByText(balanced.scenario.repositoryUrl)).toBeVisible()
+  })
+
+  it('runs_simulated_unless_the_user_chooses_real_execution', async () => {
+    const user = userEvent.setup()
+    const bodies: unknown[] = []
+    server.use(
+      http.post('*/api/v1/session', () => HttpResponse.json(sessionRealAvailable, { status: 201 })),
+      http.post('*/api/v1/jobs', async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json(balanced, { status: 201 })
+      }),
+    )
+
+    renderApp()
+    await enterService(user)
+    await screen.findByText(/익명 세션/)
+    await user.type(screen.getByLabelText('최대 예산'), '10000')
+    await user.click(screen.getByRole('radio', { name: /균형/ }))
+
+    // 비용이 발생하는 쪽이 기본값이 되지 않는다.
+    expect(screen.getByRole('radio', { name: /시뮬레이션/ })).toBeChecked()
+
+    await user.click(screen.getByRole('radio', { name: /실제 실행/ }))
+    await user.click(screen.getByRole('button', { name: 'Agent에게 실행안 요청' }))
+
+    expect(bodies).toEqual([
+      { maxBudgetKrw: 10000, priority: 'BALANCED', executionMode: 'REAL' },
+    ])
+  })
+
+  it('hides_real_execution_when_the_deployment_cannot_run_it', async () => {
+    const user = userEvent.setup()
+    renderApp()
+    await enterService(user)
+    await screen.findByText(/익명 세션/)
+
+    // 로컬 배포처럼 실제 실행이 불가능하면 선택지를 만들지 않는다.
+    expect(screen.queryByRole('radio', { name: /실제 실행/ })).not.toBeInTheDocument()
   })
 })

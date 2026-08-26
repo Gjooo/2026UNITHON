@@ -14,7 +14,21 @@ const schema = z.object({
   priority: z.enum(['CHEAPEST', 'BALANCED', 'FASTEST'], {
     error: '우선순위를 선택해 주세요.',
   }),
+  executionMode: z.enum(['SIMULATED', 'REAL']).default('SIMULATED'),
 })
+
+const EXECUTION_MODES = [
+  {
+    value: 'SIMULATED',
+    title: '시뮬레이션',
+    description: '실제 GPU를 만들지 않고 전 과정을 그대로 재현합니다. 비용이 없습니다.',
+  },
+  {
+    value: 'REAL',
+    title: '실제 실행',
+    description: '연결한 Runpod 계정에 GPU를 만들어 학습합니다. 그 계정에 비용이 발생합니다.',
+  },
+] as const
 
 const DISCLAIMER_ID = 'constraint-estimate-disclaimer'
 const PRIORITY_LABEL_ID = 'constraint-priority-label'
@@ -23,6 +37,7 @@ const PRIORITY_ERROR_ID = 'constraint-priority-error'
 
 interface ConstraintFormProps {
   isSessionReady: boolean
+  canRunReal: boolean
   isSubmitting?: boolean
   onSubmit?: (input: CreateJobInput) => void
 }
@@ -33,6 +48,7 @@ interface ConstraintFormProps {
  */
 export function ConstraintForm({
   isSessionReady,
+  canRunReal,
   isSubmitting = false,
   onSubmit,
 }: ConstraintFormProps) {
@@ -40,7 +56,11 @@ export function ConstraintForm({
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm({ resolver: zodResolver(schema), mode: 'onSubmit' })
+  } = useForm({
+    resolver: zodResolver(schema),
+    mode: 'onSubmit',
+    defaultValues: { executionMode: 'SIMULATED' as const },
+  })
 
   const submit = handleSubmit((values) => onSubmit?.(values as CreateJobInput))
 
@@ -116,6 +136,32 @@ export function ConstraintForm({
             </p>
           )}
         </div>
+
+        {canRunReal && (
+          <div>
+            <span className={styles.label} id="execution-mode-label">
+              실행 방식
+            </span>
+            <div
+              className={styles.priorityGroup}
+              role="radiogroup"
+              aria-labelledby="execution-mode-label"
+            >
+              {EXECUTION_MODES.map((mode) => (
+                <label className={styles.priorityOption} key={mode.value}>
+                  <input
+                    className={styles.priorityRadio}
+                    type="radio"
+                    value={mode.value}
+                    {...register('executionMode')}
+                  />
+                  <span className={styles.priorityTitle}>{mode.title}</span>
+                  <span className={styles.priorityDescription}>{mode.description}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
 
         <p className={styles.disclaimer} id={DISCLAIMER_ID}>
           {ESTIMATE_DISCLAIMER}

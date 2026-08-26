@@ -160,6 +160,7 @@ export function App() {
       <Alert error={createJob.error} />
       <ConstraintForm
         isSessionReady={session.isSuccess}
+          canRunReal={session.data?.realExecutionAvailable === true}
         isSubmitting={createJob.isPending}
         onSubmit={createJob.mutate}
       />
