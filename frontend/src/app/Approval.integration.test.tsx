@@ -5,6 +5,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw/server'
 import { enterService, renderApp } from '@/test/renderApp'
 import balanced from '@/test/fixtures/jobs/draft-balanced.json'
+import sessionFixture from '@/test/fixtures/session.json'
 import startAccepted from '@/test/fixtures/jobs/start-accepted.json'
 import demoBusy from '@/test/fixtures/errors/demo-busy.json'
 import executionAlreadyUsed from '@/test/fixtures/errors/execution-already-used.json'
@@ -12,8 +13,8 @@ import runpodUnavailable from '@/test/fixtures/errors/runpod-unavailable.json'
 
 type User = ReturnType<typeof userEvent.setup>
 
-async function reachPlanReview(user: User) {
-  server.use(http.post('*/api/v1/jobs', () => HttpResponse.json(balanced, { status: 201 })))
+async function reachPlanReview(user: User, job: object = balanced) {
+  server.use(http.post('*/api/v1/jobs', () => HttpResponse.json(job, { status: 201 })))
   renderApp()
   await enterService(user)
   await screen.findByText('익명 세션')
@@ -150,16 +151,18 @@ describe('실행 승인', () => {
 
   it('warns_before_approval_when_the_execution_allowance_is_used_up', async () => {
     const user = userEvent.setup()
+    // 실제 실행으로 만든 계약이어야 횟수 제한이 걸린다.
+    const realJob = { ...balanced, executionMode: 'REAL' }
     server.use(
       http.post('*/api/v1/session', () =>
         HttpResponse.json(
-          { expiresAt: '2026-09-01T19:47:38Z', executionAllowance: { used: 1, limit: 1 } },
+          { ...sessionFixture, executionAllowance: { used: 1, limit: 1 } },
           { status: 201 },
         ),
       ),
     )
 
-    await reachPlanReview(user)
+    await reachPlanReview(user, realJob)
 
     // 409를 모르고 맞기 전에 알린다. 비용 없는 비교는 계속 허용한다.
     expect(
@@ -209,6 +212,27 @@ describe('실행 승인', () => {
       '지금은 다른 실행이 진행 중입니다',
     )
     // 계약은 남고 다시 승인할 수 있다.
+    expect(screen.getByRole('button', { name: '실행 승인' })).toBeEnabled()
+  })
+
+  it('does_not_block_simulated_runs_with_the_real_execution_allowance', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.post('*/api/v1/session', () =>
+        HttpResponse.json(
+          { ...sessionFixture, executionAllowance: { used: 1, limit: 1 } },
+          { status: 201 },
+        ),
+      ),
+    )
+
+    await reachPlanReview(user)
+
+    // 실행 횟수 제한은 실제 비용이 발생하는 실행에만 적용된다.
+    expect(balanced.executionMode).toBe('SIMULATED')
+    expect(
+      screen.queryByText('이 브라우저에서는 실제 실행을 한 번만 할 수 있습니다.'),
+    ).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '실행 승인' })).toBeEnabled()
   })
 })

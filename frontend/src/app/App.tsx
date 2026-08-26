@@ -60,7 +60,10 @@ export function App() {
   const job = jobQuery.data ?? null
 
   const allowance = session.data?.executionAllowance
-  const canStart = !allowance || allowance.used < allowance.limit
+  // 실행 허용 횟수는 실제 비용이 발생하는 실행에만 적용된다.
+  // 시뮬레이션은 GPU를 만들지 않으므로 횟수를 쓰지 않는다.
+  const canStartReal = !allowance || allowance.used < allowance.limit
+  const canStart = job?.executionMode === 'REAL' ? canStartReal : true
 
   // 소유권이 없거나 세션이 끝난 Job은 저장값을 지우고 새 흐름으로 돌아간다.
   const jobError = jobQuery.error

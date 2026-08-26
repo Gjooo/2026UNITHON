@@ -171,7 +171,8 @@ describe('새로고침 복구', () => {
       ),
     )
     window.localStorage.setItem(ACTIVE_JOB_KEY, completed.id)
-    serveJob(completed)
+    // 실제 실행으로 끝난 작업이어야 횟수 제한 안내가 뜬다.
+    serveJob({ ...completed, executionMode: 'REAL' })
     renderApp()
 
     const result = await screen.findByRole('region', { name: '실행 결과' })

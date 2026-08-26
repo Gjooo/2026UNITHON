@@ -156,7 +156,7 @@ export function Landing({ onStart }: { onStart: () => void }) {
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>다른 점</h2>
-        <div className={styles.grid3}>
+        <div className={styles.grid2}>
           {DIFFERENTIATORS.map((item) => (
             <div className={styles.card} key={item.title}>
               <p className={styles.cardTitle}>{item.title}</p>
