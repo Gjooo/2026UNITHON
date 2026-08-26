@@ -3,7 +3,9 @@ import { ApiError } from '@/api/errors'
 import { useSession } from '@/hooks/useSession'
 import { useCreateJob } from '@/hooks/useCreateJob'
 import { isTerminal, useCancelJob, useJob, useStartJob } from '@/hooks/useJob'
+import { RUNPOD, useConnectProvider, useProviders } from '@/hooks/useProviders'
 import { Landing } from '@/features/landing/Landing'
+import { ProviderConnection } from '@/features/providers/ProviderConnection'
 import { ConstraintForm } from '@/features/training/ConstraintForm'
 import { ExecutionPlanReview } from '@/features/training/ExecutionPlanReview'
 import { ApprovalPanel } from '@/features/training/ApprovalPanel'
@@ -13,7 +15,7 @@ import { clearActiveJobId, readActiveJobId } from '@/features/training/activeJob
 import { toUserMessage } from '@/features/training/messages'
 import styles from './App.module.css'
 
-function SessionStatus() {
+function SessionStatus({ connected }: { connected: boolean }) {
   const session = useSession()
 
   const { dotClass, textClass, label } = session.isSuccess
@@ -29,7 +31,7 @@ function SessionStatus() {
   return (
     <p className={`${styles.sessionStatus} ${textClass}`} aria-live="polite">
       <span className={`${styles.statusDot} ${dotClass}`} aria-hidden="true" />
-      {label}
+      {connected ? `Runpod 연결됨 · ${label}` : label}
     </p>
   )
 }
@@ -40,6 +42,11 @@ export function App() {
   const [entered, setEntered] = useState(() => readActiveJobId() !== null)
   const [recoveryNotice, setRecoveryNotice] = useState<string | null>(null)
   const session = useSession(entered)
+  const providers = useProviders(entered && session.isSuccess)
+  const connectProvider = useConnectProvider()
+
+  const runpod = providers.data?.providers.find((provider) => provider.id === RUNPOD)
+  const isConnected = runpod?.connectionStatus === 'CONNECTED'
 
   const createJob = useCreateJob((created) => {
     setRecoveryNotice(null)
@@ -75,9 +82,29 @@ export function App() {
     return <Landing onStart={() => setEntered(true)} />
   }
 
+  // 연결 전에는 서비스를 열지 않는다. 실행은 사용자의 계정에서 일어난다.
+  // 연결 상태를 모르는 동안에도 열지 않는다. 열어 주면 사용자는 승인 단계에서야 막힌다.
+  if (!job && !isConnected) {
+    return (
+      <Screen
+        connected={false}
+        title="먼저 Runpod 계정을 연결해 주세요"
+        lead="Agent는 사용자의 계정에서 GPU를 만들고 정리합니다. 자원도 청구도 계속 사용자의 것입니다."
+      >
+        <Alert error={connectProvider.error ?? providers.error} />
+        {providers.isSuccess && (
+          <ProviderConnection
+            isConnecting={connectProvider.isPending}
+            onConnect={(apiKey) => connectProvider.mutateAsync(apiKey)}
+          />
+        )}
+      </Screen>
+    )
+  }
+
   if (job && isTerminal(job.status)) {
     return (
-      <Screen title="실행 결과">
+      <Screen title="실행 결과" connected={isConnected}>
         <JobResult job={job} canStartAnother={canStart} onStartAnother={startAnother} />
       </Screen>
     )
@@ -85,7 +112,7 @@ export function App() {
 
   if (job && job.status !== 'DRAFT') {
     return (
-      <Screen title="실행 상태">
+      <Screen title="실행 상태" connected={isConnected}>
         <Alert error={cancelJob.error} />
         {jobQuery.isError && <p className={styles.connectionNotice}>연결을 다시 확인하는 중</p>}
         <JobTracker
@@ -100,6 +127,7 @@ export function App() {
   if (job) {
     return (
       <Screen
+        connected={isConnected}
         title="Agent가 실행안을 비교했어요"
         lead="아래 실행 계약은 Agent가 고정한 값입니다. GPU를 직접 바꾸지 않습니다."
       >
@@ -120,6 +148,7 @@ export function App() {
 
   return (
     <Screen
+      connected={isConnected}
       title="예산과 우선순위만 정하면 됩니다"
       lead="Agent가 검증된 GPU 후보를 비교해 실행안을 추천합니다. GPU 콘솔, SSH, CUDA 설정은 다루지 않습니다."
     >
@@ -165,17 +194,19 @@ function Alert({ error }: { error: unknown }) {
 function Screen({
   title,
   lead,
+  connected = false,
   children,
 }: {
   title: string
   lead?: string
+  connected?: boolean
   children: ReactNode
 }) {
   return (
     <div className={styles.app}>
       <header className={styles.header}>
         <span className={styles.wordmark}>UNWORK</span>
-        <SessionStatus />
+        <SessionStatus connected={connected} />
       </header>
       <main className={styles.main}>
         <h1 className={styles.pageTitle}>{title}</h1>

@@ -3,7 +3,9 @@ import { expect, test } from '@playwright/test'
 test('e2e_mobile_contract_review', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: '시작하기' }).first().click()
-  await expect(page.getByText('익명 세션')).toBeVisible()
+  await page.getByLabel('Runpod API 키').fill('rpa_e2e_fake_key')
+  await page.getByRole('button', { name: '연결하기' }).click()
+  await expect(page.getByText(/Runpod 연결됨/)).toBeVisible()
   await page.getByLabel('최대 예산').fill('10000')
   await page.getByRole('radio', { name: /균형/ }).check()
   await page.getByRole('button', { name: 'Agent에게 실행안 요청' }).click()

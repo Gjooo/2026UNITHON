@@ -2,6 +2,8 @@ import { apiFetch } from './client'
 
 export type Priority = 'CHEAPEST' | 'BALANCED' | 'FASTEST'
 export type Eligibility = 'ELIGIBLE' | 'OVER_BUDGET'
+/** 시연 제어값. SIMULATED는 실제 GPU를 만들지 않아 비용이 없다. */
+export type ExecutionMode = 'SIMULATED' | 'REAL'
 export type JobStatus =
   | 'DRAFT'
   | 'PROVISIONING'
@@ -52,6 +54,7 @@ export interface TrainingJob {
   constraint: { maxBudgetKrw: number; priority: Priority }
   executionPlan: ExecutionPlan
   status: JobStatus
+  executionMode: ExecutionMode
   failureMessage: string | null
   exitCode: number | null
   completionLog: string | null
@@ -63,6 +66,7 @@ export interface TrainingJob {
 export interface CreateJobInput {
   maxBudgetKrw: number
   priority: Priority
+  executionMode?: ExecutionMode
 }
 
 /** 제약을 보내고 Agent가 고정한 추천 실행 계약을 받는다. */

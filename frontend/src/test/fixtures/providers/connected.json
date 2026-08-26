@@ -1,0 +1,10 @@
+{
+  "providers": [
+    {
+      "id": "runpod",
+      "name": "Runpod",
+      "connectionStatus": "CONNECTED",
+      "connectedAt": "2026-08-26T05:10:00Z"
+    }
+  ]
+}

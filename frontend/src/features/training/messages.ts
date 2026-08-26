@@ -11,6 +11,11 @@ const BY_CODE: Record<string, string> = {
   EXECUTION_ALREADY_USED: '이 브라우저에서는 실제 실행을 한 번만 할 수 있습니다.',
   INVALID_JOB_STATE: '이 작업은 현재 이 행동을 할 수 있는 상태가 아닙니다.',
   RUNPOD_UNAVAILABLE: '실행 환경을 시작하거나 확인하지 못했습니다. 잠시 후 다시 확인해 주세요.',
+  INVALID_PROVIDER_CREDENTIAL:
+    '이 키로는 Runpod에 연결할 수 없습니다. 키를 다시 확인해 주세요.',
+  PROVIDER_NOT_CONNECTED: 'Runpod 계정을 먼저 연결해 주세요.',
+  PROVIDER_UNAVAILABLE: 'Runpod에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+  REAL_EXECUTION_UNAVAILABLE: '이 환경에서는 실제 GPU 실행을 사용할 수 없습니다.',
   SESSION_REQUIRED: '세션이 만료됐습니다. 새 세션을 시작해 주세요.',
   SESSION_EXPIRED: '세션이 만료됐습니다. 새 세션을 시작해 주세요.',
   JOB_NOT_FOUND: '이 작업을 찾을 수 없거나 현재 세션에서 볼 수 없습니다.',

@@ -15,7 +15,9 @@ async function noHorizontalOverflow(page: Page) {
 async function requestPlan(page: Page) {
   await page.goto('/')
   await page.getByRole('button', { name: '시작하기' }).first().click()
-  await expect(page.getByText('익명 세션')).toBeVisible()
+  await page.getByLabel('Runpod API 키').fill('rpa_e2e_fake_key')
+  await page.getByRole('button', { name: '연결하기' }).click()
+  await expect(page.getByText(/Runpod 연결됨/)).toBeVisible()
   await page.getByLabel('최대 예산').fill('10000')
   await page.getByRole('radio', { name: /균형/ }).check()
   await page.getByRole('button', { name: 'Agent에게 실행안 요청' }).click()
@@ -29,10 +31,20 @@ test('00_landing', async ({ page }) => {
   await expect(page).toHaveScreenshot('00-landing.png', { fullPage: true })
 })
 
+test('00b_provider_connection', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: '시작하기' }).first().click()
+  await expect(page.getByLabel('Runpod API 키')).toBeVisible()
+  await noHorizontalOverflow(page)
+  await expect(page).toHaveScreenshot('00b-provider-connection.png', { fullPage: true })
+})
+
 test('01_constraint_form', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: '시작하기' }).first().click()
-  await expect(page.getByText('익명 세션')).toBeVisible()
+  await page.getByLabel('Runpod API 키').fill('rpa_e2e_fake_key')
+  await page.getByRole('button', { name: '연결하기' }).click()
+  await expect(page.getByText(/Runpod 연결됨/)).toBeVisible()
   await noHorizontalOverflow(page)
   await expect(page).toHaveScreenshot('01-constraint-form.png', { fullPage: true })
 })

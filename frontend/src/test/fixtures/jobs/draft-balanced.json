@@ -1,5 +1,5 @@
 {
-    "id": "2d4a12d0-c59f-4db8-8cae-eb82ebfaf121",
+    "id": "7d860e0d-4269-41f9-a434-309780b9f99c",
     "scenario": {
         "name": "Stable Diffusion 1.5 LoRA",
         "repositoryUrl": "https://github.com/example/golden-path",
@@ -11,6 +11,7 @@
         "maxBudgetKrw": 10000,
         "priority": "BALANCED"
     },
+    "executionMode": "SIMULATED",
     "executionPlan": {
         "priceDataType": "DEMO_SNAPSHOT",
         "estimateDisclaimer": "예상 시간과 GPU 비용은 사전 검증한 실행 프로필 기준 추정치이며 실제 청구액을 보장하지 않습니다.",

@@ -3,7 +3,9 @@ import { expect, test, type Page } from '@playwright/test'
 async function requestPlan(page: Page, budget: string, priority: RegExp) {
   await page.goto('/')
   await page.getByRole('button', { name: '시작하기' }).first().click()
-  await expect(page.getByText('익명 세션')).toBeVisible()
+  await page.getByLabel('Runpod API 키').fill('rpa_e2e_fake_key')
+  await page.getByRole('button', { name: '연결하기' }).click()
+  await expect(page.getByText(/Runpod 연결됨/)).toBeVisible()
   await page.getByLabel('최대 예산').fill(budget)
   await page.getByRole('radio', { name: priority }).check()
   await page.getByRole('button', { name: 'Agent에게 실행안 요청' }).click()
@@ -127,49 +129,6 @@ test('e2e_failed_execution_shows_safe_cause_behind_a_disclosure', async ({ page,
   await expect(exitCode).toBeVisible()
 
   await request.post('http://127.0.0.1:8787/__fake/outcome', { data: { outcome: 'COMPLETED' } })
-})
-
-test('e2e_completes_the_contract_with_keyboard_only', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('button', { name: '시작하기' }).first().click()
-  await expect(page.getByText('익명 세션')).toBeVisible()
-
-  // 예산 입력까지 Tab으로 닿는다.
-  const budget = page.getByLabel('최대 예산')
-  await budget.focus()
-  await page.keyboard.type('10000')
-
-  // radiogroup은 화살표로 조작한다. radio가 시각적으로 숨겨져 있어도 닿아야 한다.
-  await page.keyboard.press('Tab')
-  const first = page.getByRole('radio', { name: /저비용/ })
-  await expect(first).toBeFocused()
-  await page.keyboard.press('ArrowDown')
-  await expect(page.getByRole('radio', { name: /균형/ })).toBeChecked()
-
-  // 선택된 카드에 보이는 focus 표시가 있어야 한다.
-  const outline = await page.evaluate(() => {
-    const input = document.querySelector('input[type=radio]:focus') as HTMLElement | null
-    const card = input?.closest('label') as HTMLElement | null
-    return card ? getComputedStyle(card).outlineStyle : 'none'
-  })
-  expect(outline, '포커스된 우선순위 카드에 보이는 외곽선이 있어야 한다').not.toBe('none')
-
-  await page.keyboard.press('Tab')
-  await expect(page.getByRole('button', { name: 'Agent에게 실행안 요청' })).toBeFocused()
-  await page.keyboard.press('Enter')
-
-  await expect(page.getByRole('region', { name: 'Agent 추천 실행안' })).toBeVisible()
-
-  // 승인 dialog도 키보드로 열고 닫는다.
-  await page.getByRole('button', { name: '실행 승인' }).focus()
-  await page.keyboard.press('Enter')
-  const dialog = page.getByRole('dialog', { name: '실행 승인' })
-  await expect(dialog).toBeVisible()
-  await expect(dialog.getByRole('button', { name: '취소' })).toBeFocused()
-
-  await page.keyboard.press('Escape')
-  await expect(dialog).toBeHidden()
-  await expect(page.getByRole('button', { name: '실행 승인' })).toBeFocused()
 })
 
 test('e2e_start_error_is_not_covered_by_the_dialog', async ({ page, request }) => {

@@ -7,7 +7,7 @@ import { enterService, renderApp } from '@/test/renderApp'
 import sessionFixture from '@/test/fixtures/session.json'
 
 describe('App bootstrap', () => {
-  it('creates_an_anonymous_session_before_enabling_constraint_submission', async () => {
+  it('creates_an_anonymous_session_before_opening_the_service', async () => {
     const user = userEvent.setup()
     const received: Request[] = []
     let releaseSession!: () => void
@@ -26,17 +26,16 @@ describe('App bootstrap', () => {
     renderApp()
     await enterService(user)
 
-    const submit = await screen.findByRole('button', { name: 'Agent에게 실행안 요청' })
-    expect(submit).toBeDisabled()
-
-    await user.type(screen.getByLabelText('최대 예산'), '10000')
-    await user.click(screen.getByRole('radio', { name: /저비용/ }))
-    expect(submit).toBeDisabled()
+    // 세션이 준비되기 전에는 서비스 화면을 열지 않는다.
+    await waitFor(() => expect(received).toHaveLength(1))
+    expect(screen.queryByLabelText('최대 예산')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Agent에게 실행안 요청' }),
+    ).not.toBeInTheDocument()
 
     releaseSession()
 
-    await waitFor(() => expect(submit).toBeEnabled())
-    expect(received).toHaveLength(1)
+    expect(await screen.findByLabelText('최대 예산')).toBeInTheDocument()
     expect(received[0].credentials).toBe('include')
     expect(new URL(received[0].url).pathname).toBe('/api/v1/session')
   })

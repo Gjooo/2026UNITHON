@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw'
 import sessionFixture from '../fixtures/session.json'
 import provisioningJob from '../fixtures/jobs/provisioning.json'
+import connectedProviders from '../fixtures/providers/connected.json'
 
 /**
  * MVP REST 계약을 흉내 내는 stateful handler 모음.
@@ -12,6 +13,7 @@ export function createFakeMvpApi() {
     http.post('*/api/v1/session', () =>
       HttpResponse.json(sessionFixture, { status: 201 }),
     ),
+    http.get('*/api/v1/providers', () => HttpResponse.json(connectedProviders)),
     http.get('*/api/v1/jobs/:jobId', () => HttpResponse.json(provisioningJob)),
   ]
 }

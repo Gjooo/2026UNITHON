@@ -1,5 +1,5 @@
 {
-  "id": "2d4a12d0-c59f-4db8-8cae-eb82ebfaf121",
+  "id": "7d860e0d-4269-41f9-a434-309780b9f99c",
   "scenario": {
     "name": "Stable Diffusion 1.5 LoRA",
     "repositoryUrl": "https://github.com/example/golden-path",
@@ -56,5 +56,6 @@
   "completionLog": "Training completed",
   "startedAt": "2026-08-25T19:40:35.312607Z",
   "finishedAt": "2026-08-25T19:40:50.333313Z",
-  "podTerminatedAt": "2026-08-25T19:40:50.333313Z"
+  "podTerminatedAt": "2026-08-25T19:40:50.333313Z",
+  "executionMode": "SIMULATED"
 }

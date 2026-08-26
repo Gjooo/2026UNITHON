@@ -27,6 +27,7 @@ const ERR = {
   demoBusy: load('errors/demo-busy.json'),
   executionUsed: load('errors/execution-already-used.json'),
   validation: load('errors/validation-error.json'),
+  invalidCredential: load('errors/invalid-provider-credential.json'),
 }
 
 // 스크립트에서 시나리오를 고르기 위한 스위치. 실제 서버에는 없는 테스트 전용 제어다.
@@ -40,6 +41,7 @@ const jobs = new Map()
 // 테스트가 결과 분기를 고르기 위한 제어. 실제 API에는 없는 __fake 이름공간이다.
 let nextOutcome = 'COMPLETED'
 let forceBusy = false
+const connectedSessions = new Set()
 
 function send(res, status, body, headers = {}) {
   const payload = body === null ? '' : JSON.stringify(body)
@@ -124,6 +126,37 @@ const server = http.createServer(async (req, res) => {
     job.ownerToken = session.token
     jobs.set(id, job)
     return send(res, 201, stripOwner(job))
+  }
+
+  if (req.method === 'GET' && pathname === '/api/v1/providers') {
+    const connected = connectedSessions.has(session.token)
+    return send(res, 200, {
+      providers: [
+        {
+          id: 'runpod',
+          name: 'Runpod',
+          connectionStatus: connected ? 'CONNECTED' : 'NOT_CONNECTED',
+          connectedAt: connected ? '2026-08-26T05:10:00Z' : null,
+        },
+      ],
+    })
+  }
+
+  const credMatch = /^\/api\/v1\/providers\/([^/]+)\/credential$/.exec(pathname)
+  if (credMatch) {
+    if (req.method === 'DELETE') {
+      connectedSessions.delete(session.token)
+      return send(res, 204, null)
+    }
+    if (req.method === 'POST') {
+      const body = await readBody(req)
+      // 실제 서버는 Runpod 읽기 API로 확인한다. 여기서는 형태만 재현한다.
+      if (!body?.apiKey || String(body.apiKey).startsWith('invalid')) {
+        return send(res, 401, ERR.invalidCredential)
+      }
+      connectedSessions.add(session.token)
+      return send(res, 204, null)
+    }
   }
 
   const jobMatch = /^\/api\/v1\/jobs\/([^/]+)(\/start|\/cancel)?$/.exec(pathname)
