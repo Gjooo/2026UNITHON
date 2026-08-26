@@ -1,0 +1,66 @@
+.panel {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  display: grid;
+  gap: var(--space-lg);
+  padding: var(--space-xxl);
+}
+
+.notice {
+  color: var(--ink-mute);
+  line-height: 1.5;
+}
+
+.limitNotice {
+  background: var(--canvas-soft);
+  border: 1px solid var(--hairline);
+  border-left: 2px solid var(--status-warn);
+  border-radius: var(--radius-md);
+  color: var(--status-warn);
+  padding: var(--space-md) var(--space-lg);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.approve:hover:not(:disabled) {
+  background: var(--primary-deep);
+}
+
+.dialogFigures {
+  display: grid;
+  gap: var(--space-md);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dialogFigures dt {
+  color: var(--ink-mute);
+  font-size: 13px;
+  margin-bottom: var(--space-xs);
+}
+
+.dialogFigures dd {
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.dialogGpu {
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.dialogWarnings {
+  color: var(--ink-mute);
+  display: grid;
+  font-size: 13px;
+  gap: var(--space-sm);
+  line-height: 1.45;
+  margin: 0;
+  padding-left: var(--space-lg);
+}

@@ -1,0 +1,230 @@
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { ApiError } from '@/api/errors'
+import { useSession } from '@/hooks/useSession'
+import { useCreateJob } from '@/hooks/useCreateJob'
+import { isTerminal, useCancelJob, useJob, useStartJob } from '@/hooks/useJob'
+import { RUNPOD, useConnectProvider, useProviders } from '@/hooks/useProviders'
+import { Landing } from '@/features/landing/Landing'
+import { ProviderConnection } from '@/features/providers/ProviderConnection'
+import { ConstraintForm } from '@/features/training/ConstraintForm'
+import { ExecutionPlanReview } from '@/features/training/ExecutionPlanReview'
+import { ApprovalPanel } from '@/features/training/ApprovalPanel'
+import { JobTracker } from '@/features/training/JobTracker'
+import { JobResult } from '@/features/training/JobResult'
+import { clearActiveJobId, readActiveJobId } from '@/features/training/activeJob'
+import { toUserMessage } from '@/features/training/messages'
+import styles from './App.module.css'
+
+function SessionStatus({ connected }: { connected: boolean }) {
+  const session = useSession()
+
+  const { dotClass, textClass, label } = session.isSuccess
+    ? { dotClass: styles.statusReady, textClass: styles.sessionReady, label: '익명 세션' }
+    : session.isError
+      ? {
+          dotClass: styles.statusFailed,
+          textClass: styles.sessionFailed,
+          label: '세션을 시작하지 못했어요',
+        }
+      : { dotClass: styles.statusPending, textClass: styles.sessionReady, label: '세션 준비 중' }
+
+  return (
+    <p className={`${styles.sessionStatus} ${textClass}`} aria-live="polite">
+      <span className={`${styles.statusDot} ${dotClass}`} aria-hidden="true" />
+      {connected ? `Runpod 연결됨 · ${label}` : label}
+    </p>
+  )
+}
+
+export function App() {
+  const [jobId, setJobId] = useState<string | null>(() => readActiveJobId())
+  // 새로고침한 사용자를 소개 화면으로 되돌리지 않는다.
+  const [entered, setEntered] = useState(() => readActiveJobId() !== null)
+  const [recoveryNotice, setRecoveryNotice] = useState<string | null>(null)
+  const session = useSession(entered)
+  const providers = useProviders(entered && session.isSuccess)
+  const connectProvider = useConnectProvider()
+
+  const runpod = providers.data?.providers.find((provider) => provider.id === RUNPOD)
+  const isConnected = runpod?.connectionStatus === 'CONNECTED'
+
+  const createJob = useCreateJob((created) => {
+    setRecoveryNotice(null)
+    setJobId(created.id)
+  })
+  const startJob = useStartJob()
+  const cancelJob = useCancelJob()
+
+  // 서버 Job이 화면의 source of truth다. mutation 응답으로 상태를 추정하지 않는다.
+  const jobQuery = useJob(jobId)
+  const job = jobQuery.data ?? null
+
+
+  // 소유권이 없거나 세션이 끝난 Job은 저장값을 지우고 새 흐름으로 돌아간다.
+  const jobError = jobQuery.error
+  useEffect(() => {
+    if (!(jobError instanceof ApiError)) return
+    if (jobError.status !== 401 && jobError.status !== 404) return
+    clearActiveJobId()
+    setJobId(null)
+    setRecoveryNotice(toUserMessage(jobError))
+  }, [jobError])
+
+  function goHome() {
+    clearActiveJobId()
+    setRecoveryNotice(null)
+    setJobId(null)
+    setEntered(false)
+  }
+
+  function startAnother() {
+    clearActiveJobId()
+    setRecoveryNotice(null)
+    setJobId(null)
+  }
+
+  if (!entered) {
+    return <Landing onStart={() => setEntered(true)} />
+  }
+
+  // 연결 전에는 서비스를 열지 않는다. 실행은 사용자의 계정에서 일어난다.
+  // 연결 상태를 모르는 동안에도 열지 않는다. 열어 주면 사용자는 승인 단계에서야 막힌다.
+  if (!job && !isConnected) {
+    return (
+      <Screen
+        onHome={goHome}
+        connected={false}
+        title="먼저 Runpod 계정을 연결해 주세요"
+        lead="Agent는 사용자의 계정에서 GPU를 만들고 정리합니다. 자원도 청구도 계속 사용자의 것입니다."
+      >
+        <Alert error={connectProvider.error ?? providers.error} />
+        {providers.isSuccess && (
+          <ProviderConnection
+            isConnecting={connectProvider.isPending}
+            onConnect={(apiKey) => connectProvider.mutateAsync(apiKey)}
+          />
+        )}
+      </Screen>
+    )
+  }
+
+  if (job && isTerminal(job.status)) {
+    return (
+      <Screen onHome={goHome} title="실행 결과" connected={isConnected}>
+        <JobResult job={job} onStartAnother={startAnother} />
+      </Screen>
+    )
+  }
+
+  if (job && job.status !== 'DRAFT') {
+    return (
+      <Screen onHome={goHome} title="실행 상태" connected={isConnected}>
+        <Alert error={cancelJob.error} />
+        {jobQuery.isError && <p className={styles.connectionNotice}>연결을 다시 확인하는 중</p>}
+        <JobTracker
+          job={job}
+          isCancelling={cancelJob.isPending}
+          onCancel={() => cancelJob.mutate(job.id)}
+        />
+      </Screen>
+    )
+  }
+
+  if (job) {
+    return (
+      <Screen
+        onHome={goHome}
+        connected={isConnected}
+        title="Agent가 실행안을 비교했어요"
+        lead="아래 실행 계약은 Agent가 고정한 값입니다. GPU를 직접 바꾸지 않습니다."
+      >
+        <Alert error={startJob.error} />
+        <ExecutionPlanReview job={job} />
+        <div className={styles.panelGap}>
+          <ApprovalPanel
+            job={job}
+              isStarting={startJob.isPending}
+            onApprove={() => startJob.mutateAsync(job.id)}
+            onEditConstraints={() => setJobId(null)}
+          />
+        </div>
+      </Screen>
+    )
+  }
+
+  return (
+    <Screen
+      onHome={goHome}
+      connected={isConnected}
+      title="예산과 우선순위만 정하면 됩니다"
+      lead="Agent가 검증된 GPU 후보를 비교해 실행안을 추천합니다. GPU 콘솔, SSH, CUDA 설정은 다루지 않습니다."
+    >
+      {recoveryNotice && (
+        <p className={styles.formAlert} role="alert">
+          {recoveryNotice}
+        </p>
+      )}
+      <Alert error={createJob.error} />
+      <ConstraintForm
+        isSessionReady={session.isSuccess}
+          canRunReal={session.data?.realExecutionAvailable === true}
+        isSubmitting={createJob.isPending}
+        onSubmit={createJob.mutate}
+      />
+    </Screen>
+  )
+}
+
+/**
+ * 흐름을 바꾸는 오류는 toast가 아니라 화면 상단에 고정해 읽을 시간을 준다.
+ *
+ * 다만 상단에 두기만 하면 페이지가 길 때 사용자가 못 본다. 승인 버튼은 아래에
+ * 있고 오류는 위에 나타나므로, 누른 자리에서는 아무 일도 없는 것처럼 보인다.
+ * 나타날 때 시야로 가져오고 focus를 옮겨 화면 낭독기에도 전달한다.
+ */
+function Alert({ error }: { error: unknown }) {
+  const ref = useRef<HTMLParagraphElement>(null)
+
+  useEffect(() => {
+    if (!error) return
+    ref.current?.scrollIntoView?.({ block: 'center' })
+    ref.current?.focus()
+  }, [error])
+
+  if (!error) return null
+  return (
+    <p className={styles.formAlert} ref={ref} role="alert" tabIndex={-1}>
+      {toUserMessage(error)}
+    </p>
+  )
+}
+
+function Screen({
+  title,
+  lead,
+  connected = false,
+  onHome,
+  children,
+}: {
+  title: string
+  lead?: string
+  connected?: boolean
+  onHome: () => void
+  children: ReactNode
+}) {
+  return (
+    <div className={styles.app}>
+      <header className={styles.header}>
+        <button className={styles.wordmark} type="button" onClick={onHome} aria-label="Guupy 홈으로">
+          Guupy
+        </button>
+        <SessionStatus connected={connected} />
+      </header>
+      <main className={styles.main}>
+        <h1 className={styles.pageTitle}>{title}</h1>
+        {lead && <p className={styles.pageLead}>{lead}</p>}
+        <div className={styles.content}>{children}</div>
+      </main>
+    </div>
+  )
+}

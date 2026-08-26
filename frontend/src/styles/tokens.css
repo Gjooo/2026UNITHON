@@ -1,0 +1,62 @@
+/*
+ * DESIGN.md(Supabase 해석)가 유일한 디자인 기준이다.
+ * 흰 캔버스, 단일 emerald, 6px 기술적 radius, 코드 블록에만 다크.
+ */
+:root {
+  /* Brand */
+  --primary: #3ecf8e;
+  --primary-deep: #24b47e;
+  --on-primary: #171717;
+
+  /* Surface */
+  --canvas: #ffffff;
+  --canvas-soft: #fafafa;
+  --canvas-night: #1c1c1c;
+  --canvas-night-soft: #202020;
+
+  /* Text */
+  --ink: #171717;
+  --ink-secondary: #212121;
+  --ink-mute: #707070; /* 4.95:1 — 보조 텍스트까지 허용 */
+  --ink-mute-2: #9a9a9a; /* 2.81:1 — 텍스트 금지, 아이콘·구분선 전용 */
+  --ink-faint: #b2b2b2; /* placeholder·disabled 전용 */
+  --on-dark: #ffffff;
+
+  /* Hairline */
+  --hairline: #dfdfdf;
+  --hairline-strong: #c7c7c7;
+  --hairline-cool: #ededed;
+
+  /* Status — DESIGN.md accent에서 AA 대비로 파생. 상태 전달 전용. */
+  --status-ok: #0f7350; /* 5.85:1 */
+  --status-info: #054cff; /* 6.03:1 */
+  --status-warn: #9a5b00; /* 5.43:1 */
+  --status-danger: #c81b01; /* 5.81:1 */
+
+  /* Shape */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* Spacing */
+  --space-xxs: 2px;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-xxl: 32px;
+  --space-huge: 64px;
+
+  /* Elevation */
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --shadow-3: 0 16px 48px rgba(0, 0, 0, 0.12);
+
+  /* Type */
+  --font-sans: Inter, Pretendard, 'Noto Sans KR', system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+}

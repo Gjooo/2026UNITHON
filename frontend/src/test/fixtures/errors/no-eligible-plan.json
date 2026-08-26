@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "NO_ELIGIBLE_PLAN",
+    "message": "입력한 예산 안에서 실행할 수 있는 GPU 후보가 없습니다."
+  }
+}

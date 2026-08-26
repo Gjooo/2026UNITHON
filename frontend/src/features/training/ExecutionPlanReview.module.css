@@ -1,0 +1,236 @@
+.review {
+  display: grid;
+  gap: var(--space-xl);
+}
+
+.card {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-xxl);
+  display: grid;
+  gap: var(--space-lg);
+}
+
+.recommendedCard {
+  border-color: var(--primary-deep);
+}
+
+.cardHead {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.cardTitle {
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.recommendBadge {
+  background: var(--primary);
+  border-radius: var(--radius-full);
+  color: var(--on-primary);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+  padding: var(--space-xxs) var(--space-sm);
+}
+
+.gpuName {
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.42px;
+  line-height: 1.2;
+}
+
+.provider {
+  color: var(--ink-mute);
+  font-size: 13px;
+}
+
+.figures {
+  display: grid;
+  gap: var(--space-lg);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 420px;
+}
+
+.figures dt {
+  color: var(--ink-mute);
+  font-size: 13px;
+  margin-bottom: var(--space-xs);
+}
+
+.figures dd {
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.reason {
+  background: var(--canvas-soft);
+  border-left: 2px solid var(--primary-deep);
+  border-radius: var(--radius-xs);
+  color: var(--ink-secondary);
+  padding: var(--space-md) var(--space-lg);
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.table th,
+.table td {
+  border-bottom: 1px solid var(--hairline-cool);
+  padding: var(--space-md) var(--space-sm);
+  text-align: left;
+  font-size: 14px;
+}
+
+.table th {
+  color: var(--ink-mute);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.numeric {
+  text-align: right;
+}
+
+.statusOk {
+  color: var(--status-ok);
+}
+
+.statusWarn {
+  color: var(--status-warn);
+}
+
+.facts {
+  display: grid;
+  gap: var(--space-lg);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.facts dt {
+  color: var(--ink-mute);
+  font-size: 13px;
+  margin-bottom: var(--space-xs);
+}
+
+.facts dd {
+  font-weight: 500;
+}
+
+.disclaimer {
+  color: var(--ink-mute);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.priceTag {
+  background: var(--canvas-soft);
+  border: 1px solid var(--hairline-cool);
+  border-radius: var(--radius-full);
+  color: var(--ink-mute);
+  font-size: 12px;
+  padding: var(--space-xxs) var(--space-sm);
+}
+
+.disclosureToggle {
+  background: none;
+  border: 0;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  justify-self: start;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.disclosureBody {
+  background: var(--canvas-night);
+  border-radius: var(--radius-sm);
+  color: var(--on-dark);
+  display: grid;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  gap: var(--space-sm);
+  line-height: 1.5;
+  overflow-x: auto;
+  padding: var(--space-lg);
+}
+
+@media (max-width: 767px) {
+  .card {
+    padding: var(--space-xl);
+  }
+
+  .figures,
+  .facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 좁은 화면에서 표는 후보 카드로 접는다. 가로 스크롤에 의존하지 않는다. */
+  .table thead {
+    display: none;
+  }
+
+  .table,
+  .table tbody,
+  .table tr,
+  .table th,
+  .table td {
+    display: block;
+  }
+
+  .table tr {
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-md);
+    padding: var(--space-lg);
+  }
+
+  .table th[scope='row'] {
+    border-bottom: 1px solid var(--hairline-cool);
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: var(--space-md);
+    padding: 0 0 var(--space-md);
+  }
+
+  .table td {
+    border-bottom: 0;
+    display: flex;
+    gap: var(--space-lg);
+    justify-content: space-between;
+    padding: var(--space-xs) 0;
+    text-align: left;
+  }
+
+  .table td::before {
+    color: var(--ink-mute);
+    content: attr(data-label);
+    font-size: 13px;
+  }
+}
+
+/* author 스타일의 display가 UA의 [hidden] { display: none }을 이긴다. 명시적으로 되돌린다. */
+
+
+/* author 스타일의 display가 UA의 [hidden] { display: none }을 이긴다. 명시적으로 되돌린다. */
+
+
+/* author 스타일의 display가 UA의 [hidden] { display: none }을 이긴다. 명시적으로 되돌린다. */
+.disclosureBody[hidden] {
+  display: none;
+}

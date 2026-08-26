@@ -1,0 +1,124 @@
+.result {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  display: grid;
+  gap: var(--space-xl);
+  padding: var(--space-xxl);
+}
+
+.head {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.42px;
+  line-height: 1.2;
+}
+
+.titleOk {
+  color: var(--status-ok);
+}
+
+.titleFailed {
+  color: var(--status-danger);
+}
+
+.titleCancelled {
+  color: var(--ink);
+}
+
+.failureMessage {
+  background: var(--canvas-soft);
+  border-left: 2px solid var(--status-danger);
+  border-radius: var(--radius-xs);
+  padding: var(--space-md) var(--space-lg);
+}
+
+.log {
+  background: var(--canvas-night);
+  border-radius: var(--radius-sm);
+  color: var(--on-dark);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-x: auto;
+  padding: var(--space-lg);
+  white-space: pre-wrap;
+}
+
+.facts {
+  display: grid;
+  gap: var(--space-lg);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.facts dt {
+  color: var(--ink-mute);
+  font-size: 13px;
+  margin-bottom: var(--space-xs);
+}
+
+.facts dd {
+  font-weight: 500;
+}
+
+.teardown {
+  align-items: center;
+  color: var(--status-ok);
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.teardownPending {
+  align-items: center;
+  color: var(--status-warn);
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.disclosureToggle {
+  background: none;
+  border: 0;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  justify-self: start;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.detail {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.limitNotice {
+  background: var(--canvas-soft);
+  border: 1px solid var(--hairline);
+  border-left: 2px solid var(--status-warn);
+  border-radius: var(--radius-md);
+  color: var(--status-warn);
+  padding: var(--space-md) var(--space-lg);
+}
+
+
+@media (max-width: 767px) {
+  .facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.detail[hidden] {
+  display: none;
+}
+
+
+.selfStart {
+  justify-self: start;
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "INVALID_JOB_STATE",
+    "message": "현재 상태에서는 중단할 수 없습니다."
+  }
+}

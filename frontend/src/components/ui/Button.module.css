@@ -1,0 +1,65 @@
+.button {
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  padding: var(--space-md) var(--space-lg);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+}
+
+/* 비용이 발생하는 행동과 주 진행. 화면당 하나를 원칙으로 한다. */
+.primary {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--primary-deep);
+}
+
+.primary:disabled {
+  background: var(--hairline-cool);
+  color: var(--ink-faint);
+}
+
+.secondary {
+  background: var(--canvas);
+  border-color: var(--hairline-strong);
+  color: var(--ink);
+}
+
+.secondary:hover:not(:disabled) {
+  background: var(--canvas-soft);
+}
+
+.secondary:disabled {
+  border-color: var(--hairline);
+  color: var(--ink-faint);
+}
+
+/* 파괴적 확정. dialog 안에서만 채운다. */
+.danger {
+  background: var(--status-danger);
+  color: var(--on-dark);
+}
+
+.danger:disabled {
+  background: var(--hairline-cool);
+  color: var(--ink-faint);
+}
+
+.dangerOutline {
+  background: var(--canvas);
+  border-color: var(--status-danger);
+  color: var(--status-danger);
+}
+
+.dangerOutline:disabled {
+  border-color: var(--hairline);
+  color: var(--ink-faint);
+}

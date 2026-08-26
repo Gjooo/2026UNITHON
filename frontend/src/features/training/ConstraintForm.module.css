@@ -1,0 +1,160 @@
+.form {
+  display: grid;
+  gap: var(--space-xl);
+}
+
+.card {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-xxl);
+  display: grid;
+  gap: var(--space-lg);
+}
+
+.cardTitle {
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.scenario {
+  background: var(--canvas-soft);
+  border: 1px solid var(--hairline-cool);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.verifiedTag {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-full);
+  color: var(--ink-mute);
+  font-size: 12px;
+  line-height: 1.45;
+  padding: var(--space-xxs) var(--space-sm);
+}
+
+.label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: var(--space-sm);
+}
+
+.budgetField {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm) var(--space-md);
+  max-width: 320px;
+}
+
+.budgetPrefix {
+  color: var(--ink-mute);
+}
+
+.budgetInput {
+  border: 0;
+  background: transparent;
+  width: 100%;
+  padding: 0;
+}
+
+.budgetInput:focus {
+  outline: none;
+}
+
+.budgetField:focus-within {
+  border-color: var(--ink);
+}
+
+.priorityGroup {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-md);
+}
+
+@media (max-width: 767px) {
+  .priorityGroup {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.priorityOption {
+  position: relative;
+  display: grid;
+  gap: var(--space-xs);
+  min-height: 44px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  padding: var(--space-md) var(--space-lg);
+  cursor: pointer;
+}
+
+.priorityOption:has(input:checked) {
+  border-color: var(--primary-deep);
+  box-shadow: inset 0 0 0 1px var(--primary-deep);
+}
+
+.priorityOption:has(input:focus-visible) {
+  outline: 2px solid var(--status-info);
+  outline-offset: 2px;
+}
+
+.priorityRadio {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.priorityTitle {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.priorityDescription {
+  color: var(--ink-mute);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.disclaimer {
+  color: var(--ink-mute);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.submit {
+  justify-self: start;
+}
+
+.submit:hover:not(:disabled) {
+  background: var(--primary-deep);
+}
+
+.submit:disabled {
+  background: var(--hairline-cool);
+  color: var(--ink-faint);
+  cursor: not-allowed;
+}
+
+.scenarioNote {
+  color: var(--ink-mute);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.fieldError {
+  color: var(--status-danger);
+  font-size: 13px;
+  line-height: 1.45;
+  margin-top: var(--space-sm);
+}

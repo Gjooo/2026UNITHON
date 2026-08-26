@@ -1,0 +1,124 @@
+.tracker {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  display: grid;
+  gap: var(--space-xl);
+  padding: var(--space-xxl);
+}
+
+.head {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.gpu {
+  color: var(--ink-mute);
+  font-size: 13px;
+}
+
+.steps {
+  display: grid;
+  gap: var(--space-md);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.step {
+  align-items: baseline;
+  display: flex;
+  gap: var(--space-md);
+}
+
+.marker {
+  border-radius: var(--radius-full);
+  flex: none;
+  height: 8px;
+  position: relative;
+  top: 6px;
+  width: 8px;
+}
+
+.markerDone {
+  background: var(--primary);
+}
+
+.markerActive {
+  background: var(--primary);
+  box-shadow: 0 0 0 4px rgba(62, 207, 142, 0.25);
+}
+
+.markerPending {
+  background: var(--hairline-strong);
+}
+
+.stepLabel {
+  font-weight: 500;
+}
+
+.stepState {
+  color: var(--ink-mute);
+  font-size: 13px;
+  margin-left: var(--space-sm);
+}
+
+.figures {
+  display: grid;
+  gap: var(--space-lg);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 420px;
+}
+
+.figures dt {
+  color: var(--ink-mute);
+  font-size: 13px;
+  margin-bottom: var(--space-xs);
+}
+
+.figures dd {
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.cap {
+  color: var(--ink-mute);
+  font-size: 13px;
+}
+
+.cancel {
+  justify-self: start;
+}
+
+.cancel:disabled {
+  border-color: var(--hairline);
+  color: var(--ink-faint);
+  cursor: not-allowed;
+}
+
+
+
+@media (max-width: 767px) {
+  .figures {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.hint {
+  background: var(--canvas-soft);
+  border: 1px solid var(--hairline-cool);
+  border-radius: var(--radius-md);
+  color: var(--ink-mute);
+  font-size: 13px;
+  line-height: 1.45;
+  margin-top: var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "RUNPOD_UNAVAILABLE",
+    "message": "실행 환경을 시작하거나 확인하지 못했습니다."
+  }
+}

@@ -1,0 +1,10 @@
+{
+    "providers": [
+        {
+            "id": "runpod",
+            "name": "Runpod",
+            "connectionStatus": "NOT_CONNECTED",
+            "connectedAt": null
+        }
+    ]
+}
