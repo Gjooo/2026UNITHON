@@ -97,19 +97,24 @@ def test_job_is_hidden_from_other_session(tmp_path):
 
 
 def test_start_is_atomic_for_session_and_global_limit(tmp_path):
+    """두 제한은 실제로 GPU 를 빌리는 실행에만 적용된다."""
+
     repository = SQLiteMvpRepository(tmp_path / "mvp.sqlite3")
     runner = FakeJobRunner()
-    service = JobApplicationService(repository, runner=runner)
+    service = JobApplicationService(
+        repository,
+        runner=runner,
+        real_execution_available=True,
+        verify_credential=lambda key: True,
+    )
     owner = _client(service)
     other = TestClient(app, base_url="https://testserver")
+    real = {"maxBudgetKrw": 1_000, "priority": "CHEAPEST", "executionMode": "REAL"}
     try:
         assert owner.post("/api/v1/session").status_code == 201
-        first_job = owner.post("/api/v1/jobs", json={
-            "maxBudgetKrw": 1_000, "priority": "CHEAPEST",
-        }).json()
-        second_job = owner.post("/api/v1/jobs", json={
-            "maxBudgetKrw": 1_000, "priority": "FASTEST",
-        }).json()
+        owner.post("/api/v1/providers/runpod/credential", json={"apiKey": "rpa_valid"})
+        first_job = owner.post("/api/v1/jobs", json=real).json()
+        second_job = owner.post("/api/v1/jobs", json={**real, "priority": "FASTEST"}).json()
 
         started = owner.post(f"/api/v1/jobs/{first_job['id']}/start")
         assert started.status_code == 202
@@ -122,12 +127,17 @@ def test_start_is_atomic_for_session_and_global_limit(tmp_path):
         assert session_limited.json()["error"]["code"] == "EXECUTION_ALREADY_USED"
 
         assert other.post("/api/v1/session").status_code == 201
-        other_job = other.post("/api/v1/jobs", json={
-            "maxBudgetKrw": 1_000, "priority": "CHEAPEST",
-        }).json()
+        other.post("/api/v1/providers/runpod/credential", json={"apiKey": "rpa_valid"})
+        other_job = other.post("/api/v1/jobs", json=real).json()
         demo_busy = other.post(f"/api/v1/jobs/{other_job['id']}/start")
         assert demo_busy.status_code == 409
         assert demo_busy.json()["error"]["code"] == "DEMO_BUSY"
+
+        # 시뮬레이션은 자원을 만들지 않으므로 같은 상황에서도 막히지 않는다.
+        simulated = other.post(
+            "/api/v1/jobs", json={"maxBudgetKrw": 1_000, "priority": "CHEAPEST"}
+        ).json()
+        assert other.post(f"/api/v1/jobs/{simulated['id']}/start").status_code == 202
     finally:
         app.dependency_overrides.clear()
 

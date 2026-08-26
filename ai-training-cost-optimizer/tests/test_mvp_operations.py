@@ -475,15 +475,31 @@ def test_a_broken_spec_response_is_reported_not_raised(monkeypatch):
 
 
 def test_session_response_reports_the_remaining_execution_allowance(tmp_path):
+    """허용 횟수는 실제 비용이 발생하는 실행만 센다."""
+
     repository = SQLiteMvpRepository(tmp_path / "mvp.sqlite3")
-    service = JobApplicationService(repository, runner=FakeJobRunner())
+    service = JobApplicationService(
+        repository,
+        runner=FakeJobRunner(),
+        real_execution_available=True,
+        verify_credential=lambda key: True,
+    )
     app.dependency_overrides[get_mvp_service] = lambda: service
     try:
         client = TestClient(app, base_url="https://testserver")
         assert client.post("/api/v1/session").json()["executionAllowance"] == {"used": 0, "limit": 1}
+        client.post("/api/v1/providers/runpod/credential", json={"apiKey": "rpa_valid"})
+
+        simulated = client.post(
+            "/api/v1/jobs", json={"maxBudgetKrw": 1_000, "priority": "CHEAPEST"}
+        ).json()
+        client.post(f"/api/v1/jobs/{simulated['id']}/start")
+        # 시뮬레이션은 횟수를 쓰지 않는다.
+        assert client.post("/api/v1/session").json()["executionAllowance"]["used"] == 0
 
         job = client.post(
-            "/api/v1/jobs", json={"maxBudgetKrw": 1_000, "priority": "CHEAPEST"}
+            "/api/v1/jobs",
+            json={"maxBudgetKrw": 1_000, "priority": "CHEAPEST", "executionMode": "REAL"},
         ).json()
         client.post(f"/api/v1/jobs/{job['id']}/start")
 

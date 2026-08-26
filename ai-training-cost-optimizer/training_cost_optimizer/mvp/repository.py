@@ -213,30 +213,35 @@ class SQLiteMvpRepository:
                 raise MvpServiceError(
                     "INVALID_JOB_STATE", "이미 실행했거나 실행할 수 없는 작업입니다.", 409
                 )
-            if session.execution_used:
-                raise MvpServiceError(
-                    "EXECUTION_ALREADY_USED", "이 세션에서는 이미 실행을 시작했습니다.", 409
-                )
 
-            active_count = connection.execute(
-                """
-                SELECT COUNT(*) FROM training_jobs
-                WHERE status IN (?, ?, ?)
-                """,
-                (
-                    MvpJobStatus.PROVISIONING.value,
-                    MvpJobStatus.RUNNING.value,
-                    MvpJobStatus.TERMINATING.value,
-                ),
-            ).fetchone()[0]
-            if active_count:
-                raise MvpServiceError(
-                    "DEMO_BUSY", "다른 실행이 진행 중입니다. 잠시 후 다시 시도해 주세요.", 409
-                )
+            # 두 제한은 모두 실제로 GPU 를 빌리는 실행을 막기 위한 것이다.
+            # 시뮬레이션은 자원을 만들지 않으므로 몇 번이든, 동시에도 실행한다.
+            if job.execution_mode is ExecutionMode.REAL:
+                if session.execution_used:
+                    raise MvpServiceError(
+                        "EXECUTION_ALREADY_USED", "이 세션에서는 이미 실행을 시작했습니다.", 409
+                    )
 
-            connection.execute(
-                "UPDATE anonymous_sessions SET execution_used = 1 WHERE id = ?", (session.id,)
-            )
+                active_count = connection.execute(
+                    """
+                    SELECT COUNT(*) FROM training_jobs
+                    WHERE status IN (?, ?, ?) AND execution_mode = ?
+                    """,
+                    (
+                        MvpJobStatus.PROVISIONING.value,
+                        MvpJobStatus.RUNNING.value,
+                        MvpJobStatus.TERMINATING.value,
+                        ExecutionMode.REAL.value,
+                    ),
+                ).fetchone()[0]
+                if active_count:
+                    raise MvpServiceError(
+                        "DEMO_BUSY", "다른 실행이 진행 중입니다. 잠시 후 다시 시도해 주세요.", 409
+                    )
+
+                connection.execute(
+                    "UPDATE anonymous_sessions SET execution_used = 1 WHERE id = ?", (session.id,)
+                )
             connection.execute(
                 "UPDATE training_jobs SET status = ?, started_at = ? WHERE id = ?",
                 (MvpJobStatus.PROVISIONING.value, to_utc_iso(started_at), job.id),
